@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>メール設定 - 営業日報システム</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .setting-card {
+      max-width: 600px;
+    }
+    .form-help {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 0.25rem;
+    }
+    .test-section {
+      background: var(--background-color);
+      padding: 1rem;
+      border-radius: 0.5rem;
+      margin-top: 1.5rem;
+    }
+    .test-section h4 {
+      margin: 0 0 1rem 0;
+      font-size: 0.875rem;
+    }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      border-radius: 0.375rem;
+      font-size: 0.875rem;
+      margin-bottom: 1rem;
+    }
+    .status-badge.enabled {
+      background: #d1fae5;
+      color: #065f46;
+    }
+    .status-badge.disabled {
+      background: #fef3c7;
+      color: #92400e;
+    }
+    .smtp-examples {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 0.5rem;
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+      font-size: 0.875rem;
+    }
+    .smtp-examples h4 {
+      margin: 0 0 0.5rem 0;
+      font-size: 0.875rem;
+      color: var(--text-muted);
+    }
+    .smtp-examples table {
+      width: 100%;
+      font-size: 0.8rem;
+    }
+    .smtp-examples td {
+      padding: 0.25rem 0.5rem;
+    }
+  </style>
+</head>
+<body>
+  <!-- ヘッダー -->
+  <header class="header">
+    <div class="header-content">
+      <a href="/dashboard.html" class="logo">営業日報システム</a>
+      <nav class="nav" id="main-nav">
+        <a href="/dashboard.html" class="nav-link">ホーム</a>
+        <a href="/report-list.html" class="nav-link">日報一覧</a>
+        <a href="/calendar.html" class="nav-link">カレンダー</a>
+      </nav>
+      <div class="user-info">
+        <span class="user-name" id="user-name">-</span>
+        <button class="btn btn-outline btn-sm btn-logout" onclick="logout()">ログアウト</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- メインコンテンツ -->
+  <main class="main-content">
+    <h1 class="page-title">📧 メール通知設定</h1>
+
+    <div class="card setting-card">
+      <div id="status-badge" class="status-badge disabled">
+        <span>⚠️</span>
+        <span>メール通知は無効です</span>
+      </div>
+
+      <div class="smtp-examples">
+        <h4>よく使用されるSMTPサーバー設定例</h4>
+        <table>
+          <tr>
+            <td><strong>Gmail</strong></td>
+            <td>smtp.gmail.com:587（アプリパスワード必要）</td>
+          </tr>
+          <tr>
+            <td><strong>Microsoft 365</strong></td>
+            <td>smtp.office365.com:587</td>
+          </tr>
+          <tr>
+            <td><strong>さくらインターネット</strong></td>
+            <td>[初期ドメイン].sakura.ne.jp:587</td>
+          </tr>
+        </table>
+      </div>
+
+      <form id="email-form">
+        <div class="form-group">
+          <label class="form-label">SMTPサーバー *</label>
+          <input type="text" id="smtp_host" class="form-input" placeholder="smtp.example.com" required>
+          <div class="form-help">メールサーバーのホスト名</div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">ポート番号 *</label>
+            <input type="number" id="smtp_port" class="form-input" value="587" required>
+            <div class="form-help">通常は587（TLS）または465（SSL）</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">暗号化</label>
+            <select id="smtp_secure" class="form-select">
+              <option value="0">STARTTLS（ポート587）</option>
+              <option value="1">SSL/TLS（ポート465）</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">SMTPユーザー名 *</label>
+          <input type="text" id="smtp_user" class="form-input" placeholder="user@example.com" required>
+          <div class="form-help">認証に使用するユーザー名（通常はメールアドレス）</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">SMTPパスワード *</label>
+          <input type="password" id="smtp_password" class="form-input" placeholder="パスワード" required>
+          <div class="form-help">認証に使用するパスワード（Gmailの場合はアプリパスワード）</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">送信元メールアドレス *</label>
+          <input type="email" id="from_address" class="form-input" placeholder="noreply@example.com" required>
+          <div class="form-help">通知メールの送信元として表示されるアドレス</div>
+        </div>
+
+        <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+          <button type="submit" class="btn btn-primary">設定を保存</button>
+        </div>
+      </form>
+
+      <div class="test-section">
+        <h4>📬 テスト送信</h4>
+        <div style="display: flex; gap: 0.5rem;">
+          <input type="email" id="test_email" class="form-input" placeholder="test@example.com" style="flex: 1;">
+          <button type="button" class="btn btn-outline" onclick="sendTestEmail()">テスト送信</button>
+        </div>
+        <div class="form-help">設定を保存した後、テストメールを送信して確認できます</div>
+      </div>
+    </div>
+
+    <div class="card setting-card" style="margin-top: 1.5rem;">
+      <h3 style="margin: 0 0 1rem 0;">📋 通知が送信されるタイミング</h3>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>イベント</th>
+            <th>送信先</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>日報が提出された</td>
+            <td>上長・管理者（メールアドレス登録者のみ）</td>
+          </tr>
+          <tr>
+            <td>日報が確認された</td>
+            <td>日報作成者</td>
+          </tr>
+          <tr>
+            <td>日報が差し戻された</td>
+            <td>日報作成者</td>
+          </tr>
+          <tr>
+            <td>コメントが追加された</td>
+            <td>日報作成者 + 過去のコメント投稿者</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="form-help" style="margin-top: 1rem;">
+        ※ ユーザー管理画面で各ユーザーのメールアドレスを登録してください
+      </div>
+    </div>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const user = await checkAuth();
+      if (!user) return;
+
+      if (user.role !== 'admin') {
+        alert('この画面にアクセスする権限がありません');
+        window.location.href = '/dashboard.html';
+        return;
+      }
+
+      loadSettings();
+    });
+
+    async function loadSettings() {
+      try {
+        const res = await fetch('/api/settings/email');
+        const settings = await res.json();
+        
+        if (settings.smtp_host) {
+          document.getElementById('smtp_host').value = settings.smtp_host || '';
+          document.getElementById('smtp_port').value = settings.smtp_port || 587;
+          document.getElementById('smtp_user').value = settings.smtp_user || '';
+          document.getElementById('smtp_password').value = settings.smtp_password || '';
+          document.getElementById('smtp_secure').value = settings.smtp_secure ? '1' : '0';
+          document.getElementById('from_address').value = settings.from_address || '';
+          
+          // 設定済みならステータス更新
+          if (settings.smtp_host && settings.smtp_user) {
+            document.getElementById('status-badge').className = 'status-badge enabled';
+            document.getElementById('status-badge').innerHTML = '<span>✅</span><span>メール通知は有効です</span>';
+          }
+        }
+      } catch (error) {
+        console.error('設定読み込みエラー:', error);
+      }
+    }
+
+    document.getElementById('email-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const data = {
+        smtp_host: document.getElementById('smtp_host').value,
+        smtp_port: parseInt(document.getElementById('smtp_port').value),
+        smtp_user: document.getElementById('smtp_user').value,
+        smtp_password: document.getElementById('smtp_password').value,
+        smtp_secure: document.getElementById('smtp_secure').value === '1',
+        from_address: document.getElementById('from_address').value
+      };
+      
+      try {
+        const res = await fetch('/api/settings/email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        
+        const result = await res.json();
+        
+        if (result.success) {
+          alert('設定を保存しました');
+          document.getElementById('status-badge').className = 'status-badge enabled';
+          document.getElementById('status-badge').innerHTML = '<span>✅</span><span>メール通知は有効です</span>';
+        } else {
+          alert('エラー: ' + (result.error || '保存に失敗しました'));
+        }
+      } catch (error) {
+        alert('エラー: ' + error.message);
+      }
+    });
+
+    async function sendTestEmail() {
+      const toAddress = document.getElementById('test_email').value;
+      if (!toAddress) {
+        alert('送信先メールアドレスを入力してください');
+        return;
+      }
+      
+      try {
+        const res = await fetch('/api/settings/email/test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ to_address: toAddress })
+        });
+        
+        const result = await res.json();
+        
+        if (result.success) {
+          alert('テストメールを送信しました。\n受信を確認してください。');
+        } else {
+          alert('送信エラー: ' + (result.error || '送信に失敗しました'));
+        }
+      } catch (error) {
+        alert('エラー: ' + error.message);
+      }
+    }
+  </script>
+</body>
+</html>

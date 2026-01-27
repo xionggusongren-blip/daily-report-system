@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>日報編集 - 営業日報システム</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <!-- ヘッダー -->
+  <header class="header">
+    <div class="header-content">
+      <a href="/dashboard.html" class="logo">営業日報システム</a>
+      <nav class="nav" id="main-nav">
+        <a href="/dashboard.html" class="nav-link">ホーム</a>
+        <a href="/report-list.html" class="nav-link">日報一覧</a>
+        <a href="/calendar.html" class="nav-link">カレンダー</a>
+      </nav>
+      <div class="user-info">
+        <span class="user-name" id="user-name">-</span>
+        <button class="btn btn-outline btn-sm btn-logout" onclick="logout()">ログアウト</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- メインコンテンツ -->
+  <main class="main-content">
+    <h1 class="page-title">日報を編集</h1>
+
+    <form id="report-form">
+      <!-- 基本情報 -->
+      <div class="card">
+        <h2 class="card-title">基本情報</h2>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label required" for="report_date">日付</label>
+            <input type="date" id="report_date" name="report_date" class="form-input" required>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label required" for="work_style">勤務形態</label>
+            <select id="work_style" name="work_style" class="form-select" required>
+              <option value="">選択してください</option>
+              <option value="office">出社</option>
+              <option value="remote">在宅</option>
+              <option value="outside">外出</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- 訪問記録 -->
+      <div class="card">
+        <h2 class="card-title">📍 訪問記録</h2>
+        <div id="visits-container"></div>
+        <button type="button" class="btn-add-section" onclick="addVisit()">＋ 訪問記録を追加</button>
+      </div>
+
+      <!-- 業務内容 -->
+      <div class="card">
+        <h2 class="card-title">業務内容</h2>
+        
+        <div class="form-group">
+          <label class="form-label" for="work_content">本日の業務内容</label>
+          <textarea id="work_content" name="work_content" class="form-textarea" rows="4" placeholder="訪問以外の業務内容があれば記入してください"></textarea>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label" for="achievements">業務の成果・進捗</label>
+          <textarea id="achievements" name="achievements" class="form-textarea" rows="3"></textarea>
+        </div>
+      </div>
+
+      <!-- 課題・その他 -->
+      <div class="card">
+        <h2 class="card-title">課題・その他</h2>
+        
+        <div class="form-group">
+          <label class="form-label" for="issues">課題・問題点</label>
+          <textarea id="issues" name="issues" class="form-textarea" rows="3"></textarea>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label" for="consultation">上長への相談事項</label>
+          <textarea id="consultation" name="consultation" class="form-textarea" rows="2"></textarea>
+        </div>
+      </div>
+
+      <!-- タスク -->
+      <div class="card">
+        <h2 class="card-title">タスク管理</h2>
+        <div id="tasks-container"></div>
+        <button type="button" class="btn-add-section" onclick="addTask()">＋ タスクを追加</button>
+      </div>
+
+      <!-- 送信ボタン -->
+      <div class="card">
+        <div class="btn-group" id="action-buttons" style="justify-content: space-between; align-items: center;">
+          <a href="#" id="back-link" class="btn btn-outline">← 戻る</a>
+          <div style="display: flex; gap: 0.5rem;">
+            <button type="button" class="btn btn-outline" onclick="saveReport('draft')">下書き保存</button>
+            <button type="submit" class="btn btn-primary">保存して完了</button>
+          </div>
+        </div>
+      </div>
+    </form>
+  </main>
+
+  <!-- 顧客選択モーダル -->
+  <div id="customer-modal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>顧客を選択</h3>
+        <button type="button" class="modal-close" onclick="closeCustomerModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="text" id="customer-search" class="form-input" placeholder="顧客名で検索...">
+        <div id="customer-list" class="customer-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .modal.hidden { display: none; }
+    .modal-content {
+      background: white;
+      border-radius: 0.5rem;
+      width: 90%;
+      max-width: 500px;
+      max-height: 80vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .modal-header h3 { margin: 0; }
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+    }
+    .modal-body {
+      padding: 1rem;
+      overflow-y: auto;
+    }
+    .customer-list {
+      margin-top: 1rem;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .customer-item {
+      padding: 0.75rem;
+      border: 1px solid var(--border-color);
+      border-radius: 0.375rem;
+      margin-bottom: 0.5rem;
+      cursor: pointer;
+    }
+    .customer-item:hover {
+      background: var(--background-color);
+    }
+    .customer-item-name { font-weight: 600; }
+    .customer-item-code { font-size: 0.75rem; color: var(--text-muted); }
+    .checkbox-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 0.25rem 0.5rem;
+      background: var(--background-color);
+      border-radius: 0.25rem;
+      font-size: 0.875rem;
+      cursor: pointer;
+    }
+    .checkbox-label:hover {
+      background: var(--border-color);
+    }
+  </style>
+
+  <script src="/js/common.js"></script>
+  <script>
+    let taskCount = 0;
+    let visitCount = 0;
+    let manufacturers = [];
+    let customers = [];
+    let allUsers = [];
+    let currentUser = null;
+    let currentVisitIndex = null;
+    let reportId = null;
+    let originalData = null;
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      const user = await checkAuth();
+      if (!user) return;
+      currentUser = user;
+
+      reportId = getUrlParam('id');
+      if (!reportId) {
+        alert('日報IDが指定されていません');
+        window.location.href = '/report-list.html';
+        return;
+      }
+
+      document.getElementById('back-link').href = `/report-detail.html?id=${reportId}`;
+      await loadMasterData();
+      await loadReport();
+
+      document.getElementById('customer-search').addEventListener('input', debounce(searchCustomers, 300));
+    });
+
+    async function loadMasterData() {
+      try {
+        const [mfrRes, custRes, usersRes] = await Promise.all([
+          fetch('/api/manufacturers'),
+          fetch('/api/customers'),
+          fetch('/api/users/all')
+        ]);
+        manufacturers = await mfrRes.json();
+        customers = await custRes.json();
+        allUsers = await usersRes.json();
+      } catch (error) {
+        console.error('マスタデータ読み込みエラー:', error);
+      }
+    }
+
+    async function loadReport() {
+      try {
+        const res = await fetch(`/api/reports/${reportId}`);
+        if (!res.ok) {
+          alert('日報の読み込みに失敗しました');
+          window.location.href = '/report-list.html';
+          return;
+        }
+
+        originalData = await res.json();
+
+        // 自分の日報か確認
+        if (originalData.user_id !== currentUser.id) {
+          alert('この日報は編集できません');
+          window.location.href = `/report-detail.html?id=${reportId}`;
+          return;
+        }
+
+        // 編集可能なステータスか確認（確認済み以外は編集可能）
+        if (originalData.status === 'confirmed') {
+          alert('確認済みの日報は編集できません');
+          window.location.href = `/report-detail.html?id=${reportId}`;
+          return;
+        }
+
+        // ステータスに応じてボタンを変更
+        updateActionButtons(originalData.status);
+
+        // フォームに値をセット
+        document.getElementById('report_date').value = originalData.report_date;
+        document.getElementById('work_style').value = originalData.work_style || '';
+        document.getElementById('work_content').value = originalData.work_content || '';
+        document.getElementById('achievements').value = originalData.achievements || '';
+        document.getElementById('issues').value = originalData.issues || '';
+        document.getElementById('consultation').value = originalData.consultation || '';
+
+        // タスク
+        if (originalData.tasks && originalData.tasks.length > 0) {
+          originalData.tasks.forEach(t => addTask(t.content, t.is_completed, t.due_date || ''));
+        }
+
+        // 訪問記録
+        if (originalData.visits && originalData.visits.length > 0) {
+          originalData.visits.forEach(v => {
+            addVisit({
+              customer_id: v.customer_id,
+              customer_name: v.customer_name || v.customer_name_manual,
+              visit_purpose: v.visit_purpose,
+              meeting_content: v.meeting_content,
+              deal_amount: v.deal_amount,
+              next_action: v.next_action,
+              next_action_date: v.next_action_date,
+              manufacturer_ids: v.manufacturers ? v.manufacturers.map(m => m.id) : [],
+              companion_ids: v.companions ? v.companions.map(c => c.id) : []
+            });
+          });
+        }
+
+      } catch (error) {
+        console.error('日報読み込みエラー:', error);
+        alert('通信エラーが発生しました');
+      }
+    }
+
+    function addTask(content = '', isCompleted = false, dueDate = '') {
+      taskCount++;
+      const container = document.getElementById('tasks-container');
+      const div = document.createElement('div');
+      div.className = 'dynamic-section';
+      div.id = `task-${taskCount}`;
+      div.innerHTML = `
+        <div class="dynamic-section-header">
+          <span class="dynamic-section-title">タスク ${taskCount}</span>
+          <button type="button" class="btn-remove-section" onclick="removeTask(${taskCount})">×</button>
+        </div>
+        <div class="form-row">
+          <div class="form-group" style="flex: 1;">
+            <input type="text" class="form-input task-content" value="${escapeHtml(content)}" placeholder="タスク内容">
+          </div>
+          <div class="form-group" style="flex: 0 0 130px;">
+            <input type="date" class="form-input task-due-date" value="${dueDate}" title="期限">
+          </div>
+          <div class="form-group" style="flex: 0 0 auto;">
+            <label class="checkbox-label">
+              <input type="checkbox" class="task-completed" ${isCompleted ? 'checked' : ''}> 完了
+            </label>
+          </div>
+        </div>
+      `;
+      container.appendChild(div);
+    }
+
+    function removeTask(id) {
+      const el = document.getElementById(`task-${id}`);
+      if (el) el.remove();
+    }
+
+    function addVisit(data = {}) {
+      visitCount++;
+      const container = document.getElementById('visits-container');
+      const div = document.createElement('div');
+      div.className = 'dynamic-section';
+      div.id = `visit-${visitCount}`;
+
+      const mfrCheckboxes = manufacturers.map(m => `
+        <label class="checkbox-label">
+          <input type="checkbox" class="visit-manufacturer" value="${m.id}"
+            ${data.manufacturer_ids && data.manufacturer_ids.includes(m.id) ? 'checked' : ''}>
+          ${escapeHtml(m.name)}
+        </label>
+      `).join('');
+      
+      const companionCheckboxes = allUsers.filter(u => u.id !== currentUser.id).map(u => `
+        <label class="checkbox-label">
+          <input type="checkbox" class="visit-companion" value="${u.id}"
+            ${data.companion_ids && data.companion_ids.includes(u.id) ? 'checked' : ''}>
+          ${escapeHtml(u.name)}
+        </label>
+      `).join('');
+
+      div.innerHTML = `
+        <div class="dynamic-section-header">
+          <span class="dynamic-section-title">訪問記録 ${visitCount}</span>
+          <button type="button" class="btn-remove-section" onclick="removeVisit(${visitCount})">×</button>
+        </div>
+        <div class="form-group">
+          <label class="form-label">顧客</label>
+          <div style="display: flex; gap: 0.5rem;">
+            <input type="text" class="form-input visit-customer-name" value="${escapeHtml(data.customer_name || '')}" readonly>
+            <input type="hidden" class="visit-customer-id" value="${data.customer_id || ''}">
+            <button type="button" class="btn btn-outline btn-sm" onclick="openCustomerModal(${visitCount})">選択</button>
+            <button type="button" class="btn btn-outline btn-sm" onclick="clearCustomer(${visitCount})">クリア</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">訪問目的</label>
+          <select class="form-select visit-purpose">
+            <option value="">選択してください</option>
+            <option value="新規開拓" ${data.visit_purpose === '新規開拓' ? 'selected' : ''}>新規開拓</option>
+            <option value="既存フォロー" ${data.visit_purpose === '既存フォロー' ? 'selected' : ''}>既存フォロー</option>
+            <option value="見積提出" ${data.visit_purpose === '見積提出' ? 'selected' : ''}>見積提出</option>
+            <option value="商談" ${data.visit_purpose === '商談' ? 'selected' : ''}>商談</option>
+            <option value="納品" ${data.visit_purpose === '納品' ? 'selected' : ''}>納品</option>
+            <option value="クレーム対応" ${data.visit_purpose === 'クレーム対応' ? 'selected' : ''}>クレーム対応</option>
+            <option value="その他" ${data.visit_purpose === 'その他' ? 'selected' : ''}>その他</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">同行者</label>
+          <div class="checkbox-group visit-companions">
+            ${companionCheckboxes}
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">商談内容</label>
+          <textarea class="form-textarea visit-content" rows="3">${escapeHtml(data.meeting_content || '')}</textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">案件金額（円）</label>
+            <input type="number" class="form-input visit-amount" value="${data.deal_amount || ''}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">次回アクション日</label>
+            <input type="date" class="form-input visit-next-date" value="${data.next_action_date || ''}">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">次回アクション</label>
+          <input type="text" class="form-input visit-next-action" value="${escapeHtml(data.next_action || '')}">
+        </div>
+      `;
+      container.appendChild(div);
+    }
+
+    function removeVisit(id) {
+      const el = document.getElementById(`visit-${id}`);
+      if (el) el.remove();
+    }
+
+    function openCustomerModal(visitIndex) {
+      currentVisitIndex = visitIndex;
+      document.getElementById('customer-modal').classList.remove('hidden');
+      document.getElementById('customer-search').value = '';
+      renderCustomerList(customers);
+    }
+
+    function closeCustomerModal() {
+      document.getElementById('customer-modal').classList.add('hidden');
+      currentVisitIndex = null;
+    }
+
+    async function searchCustomers() {
+      const q = document.getElementById('customer-search').value;
+      try {
+        const res = await fetch(`/api/customers?q=${encodeURIComponent(q)}`);
+        const data = await res.json();
+        renderCustomerList(data);
+      } catch (error) {
+        console.error('顧客検索エラー:', error);
+      }
+    }
+
+    function renderCustomerList(list) {
+      const container = document.getElementById('customer-list');
+      if (list.length === 0) {
+        container.innerHTML = '<p class="text-muted">顧客が見つかりません</p>';
+        return;
+      }
+      container.innerHTML = list.map(c => `
+        <div class="customer-item" onclick="selectCustomer(${c.id}, '${escapeHtml(c.name)}')">
+          <div class="customer-item-name">${escapeHtml(c.name)}</div>
+          <div class="customer-item-code">${escapeHtml(c.customer_code || '')}</div>
+        </div>
+      `).join('');
+    }
+
+    function selectCustomer(id, name) {
+      if (currentVisitIndex === null) return;
+      const visit = document.getElementById(`visit-${currentVisitIndex}`);
+      if (visit) {
+        visit.querySelector('.visit-customer-id').value = id;
+        visit.querySelector('.visit-customer-name').value = name;
+      }
+      closeCustomerModal();
+    }
+
+    function clearCustomer(visitIndex) {
+      const visit = document.getElementById(`visit-${visitIndex}`);
+      if (visit) {
+        visit.querySelector('.visit-customer-id').value = '';
+        visit.querySelector('.visit-customer-name').value = '';
+      }
+    }
+
+    function collectFormData() {
+      const tasks = [];
+      document.querySelectorAll('#tasks-container .dynamic-section').forEach(el => {
+        const content = el.querySelector('.task-content').value.trim();
+        if (content) {
+          tasks.push({
+            content: content,
+            is_completed: el.querySelector('.task-completed').checked,
+            due_date: el.querySelector('.task-due-date')?.value || null
+          });
+        }
+      });
+
+      const visits = [];
+      document.querySelectorAll('#visits-container .dynamic-section').forEach(el => {
+        const customerId = el.querySelector('.visit-customer-id').value;
+        const customerName = el.querySelector('.visit-customer-name').value;
+        const content = el.querySelector('.visit-content').value.trim();
+
+        if (customerId || customerName || content) {
+          const manufacturerIds = [];
+          el.querySelectorAll('.visit-manufacturer:checked').forEach(cb => {
+            manufacturerIds.push(parseInt(cb.value));
+          });
+
+          visits.push({
+            customer_id: customerId ? parseInt(customerId) : null,
+            customer_name_manual: !customerId ? customerName : null,
+            visit_purpose: el.querySelector('.visit-purpose').value,
+            meeting_content: content,
+            deal_amount: el.querySelector('.visit-amount').value || null,
+            probability: el.querySelector('.visit-probability').value || null,
+            next_action: el.querySelector('.visit-next-action').value,
+            next_action_date: el.querySelector('.visit-next-date').value || null,
+            manufacturer_ids: manufacturerIds
+          });
+        }
+      });
+
+      return {
+        report_date: document.getElementById('report_date').value,
+        work_style: document.getElementById('work_style').value,
+        work_content: document.getElementById('work_content').value,
+        achievements: document.getElementById('achievements').value,
+        issues: document.getElementById('issues').value,
+        consultation: document.getElementById('consultation').value,
+        tasks: tasks,
+        visits: visits
+      };
+    }
+
+    // ステータスに応じてボタンを変更
+    function updateActionButtons(status) {
+      const container = document.getElementById('action-buttons');
+      let html = `<a href="/report-detail.html?id=${reportId}" class="btn btn-outline">← 戻る</a>`;
+      html += `<div style="display: flex; gap: 0.5rem;">`;
+
+      if (status === 'draft') {
+        html += `<button type="button" class="btn btn-outline" onclick="saveReport('draft')">下書き保存</button>`;
+        html += `<button type="button" class="btn btn-primary" onclick="saveReport('submitted')">保存して完了</button>`;
+      } else if (status === 'submitted') {
+        html += `<button type="button" class="btn btn-primary" onclick="saveReport('submitted')">更新する</button>`;
+      } else if (status === 'rejected') {
+        html += `<button type="button" class="btn btn-outline" onclick="saveReport('draft')">下書き保存</button>`;
+        html += `<button type="button" class="btn btn-primary" onclick="saveReport('submitted')">修正して完了</button>`;
+      }
+
+      html += `</div>`;
+      container.innerHTML = html;
+    }
+
+    async function saveReport(status) {
+      const actionLabel = status === 'submitted' 
+        ? (originalData.status === 'submitted' ? '更新' : '提出')
+        : '下書き保存';
+      
+      if (status === 'submitted' && !confirm(`日報を${actionLabel}しますか？`)) return;
+
+      const data = collectFormData();
+      data.status = status;
+
+      try {
+        const res = await fetch(`/api/reports/${reportId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        if (res.ok) {
+          alert(status === 'submitted' ? `日報を${actionLabel}しました` : '下書きを保存しました');
+          window.location.href = `/report-detail.html?id=${reportId}`;
+        } else {
+          const err = await res.json();
+          alert('保存に失敗しました: ' + err.error);
+        }
+      } catch (error) {
+        alert('通信エラーが発生しました');
+        console.error(error);
+      }
+    }
+  </script>
+</body>
+</html>

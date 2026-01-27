@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>週次サマリー - 営業日報システム</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .summary-container {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    .filter-section {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      margin-bottom: 1.5rem;
+    }
+    .week-nav {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+    .week-nav button {
+      padding: 0.5rem 1rem;
+      border: 1px solid var(--border-color);
+      background: white;
+      border-radius: 0.375rem;
+      cursor: pointer;
+    }
+    .week-nav button:hover {
+      background: #f1f5f9;
+    }
+    .week-label {
+      font-weight: 600;
+      min-width: 200px;
+      text-align: center;
+    }
+    
+    /* ハイライトカード */
+    .highlights-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    @media (max-width: 768px) {
+      .highlights-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    .highlight-card {
+      padding: 1rem;
+      border-radius: 0.5rem;
+      color: white;
+    }
+    .highlight-card.positive {
+      background: linear-gradient(135deg, #10b981, #059669);
+    }
+    .highlight-card.alert {
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+    }
+    .highlight-card.opportunity {
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+    }
+    .highlight-title {
+      font-size: 0.875rem;
+      opacity: 0.9;
+      margin-bottom: 0.5rem;
+    }
+    .highlight-items {
+      font-size: 0.8rem;
+    }
+    .highlight-item {
+      padding: 0.25rem 0;
+      border-bottom: 1px solid rgba(255,255,255,0.2);
+    }
+    .highlight-item:last-child {
+      border-bottom: none;
+    }
+
+    /* チームサマリー */
+    .team-summary {
+      background: linear-gradient(135deg, #1e40af, #3b82f6);
+      color: white;
+      padding: 1.5rem;
+      border-radius: 0.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .team-summary h2 {
+      margin: 0 0 1rem 0;
+      font-size: 1.25rem;
+    }
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 1rem;
+    }
+    .stat-card {
+      text-align: center;
+      padding: 1rem;
+      background: rgba(255,255,255,0.1);
+      border-radius: 0.5rem;
+    }
+    .stat-value {
+      font-size: 1.75rem;
+      font-weight: bold;
+    }
+    .stat-label {
+      font-size: 0.75rem;
+      opacity: 0.8;
+    }
+
+    /* 訪問先・メーカー */
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .info-card {
+      background: white;
+      border: 1px solid var(--border-color);
+      border-radius: 0.5rem;
+      padding: 1rem;
+    }
+    .info-card h3 {
+      margin: 0 0 0.75rem 0;
+      font-size: 0.9rem;
+      color: #475569;
+    }
+    .tag-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.375rem;
+    }
+    .tag {
+      padding: 0.25rem 0.5rem;
+      background: #dbeafe;
+      color: #1e40af;
+      border-radius: 0.25rem;
+      font-size: 0.75rem;
+    }
+    .tag.supplier {
+      background: #ffedd5;
+      color: #c2410c;
+    }
+    .tag.mfr {
+      background: #e0e7ff;
+      color: #3730a3;
+    }
+    .tag-count {
+      background: rgba(0,0,0,0.1);
+      padding: 0 0.25rem;
+      border-radius: 0.25rem;
+      margin-left: 0.25rem;
+    }
+
+    /* メンバー別 */
+    .member-section {
+      background: white;
+      border: 1px solid var(--border-color);
+      border-radius: 0.5rem;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+    .member-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      padding: 0.5rem;
+      margin: -0.5rem;
+      border-radius: 0.375rem;
+    }
+    .member-header:hover {
+      background: #f8fafc;
+    }
+    .member-info {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .member-name {
+      font-weight: 600;
+      font-size: 1rem;
+    }
+    .member-dept {
+      font-size: 0.8rem;
+      color: #64748b;
+    }
+    .member-stats {
+      display: flex;
+      gap: 1rem;
+      font-size: 0.8rem;
+    }
+    .member-stat {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    .member-stat-value {
+      font-weight: 600;
+      color: #3b82f6;
+    }
+    .member-details {
+      display: none;
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border-color);
+    }
+    .member-details.show {
+      display: block;
+    }
+    .member-detail-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    .member-detail-card {
+      background: #f8fafc;
+      padding: 0.75rem;
+      border-radius: 0.375rem;
+    }
+    .member-detail-title {
+      font-size: 0.75rem;
+      color: #64748b;
+      margin-bottom: 0.5rem;
+    }
+    .member-highlight {
+      background: #fffbeb;
+      border-left: 3px solid #f59e0b;
+      padding: 0.75rem;
+      margin-bottom: 0.5rem;
+      border-radius: 0 0.25rem 0.25rem 0;
+      font-size: 0.85rem;
+    }
+    .member-highlight-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: #64748b;
+      margin-bottom: 0.25rem;
+    }
+    .member-highlight-content {
+      color: #374151;
+    }
+    .member-highlight-action {
+      margin-top: 0.5rem;
+      padding: 0.25rem 0.5rem;
+      background: #fef3c7;
+      border-radius: 0.25rem;
+      font-size: 0.75rem;
+      color: #92400e;
+    }
+
+    /* 日別活動 */
+    .daily-chart {
+      display: flex;
+      align-items: flex-end;
+      gap: 0.5rem;
+      height: 60px;
+      padding: 0.5rem 0;
+    }
+    .daily-bar-wrapper {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    .daily-bar {
+      width: 100%;
+      background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+      border-radius: 0.25rem 0.25rem 0 0;
+      min-height: 4px;
+    }
+    .daily-label {
+      font-size: 0.65rem;
+      color: #94a3b8;
+    }
+    .daily-value {
+      font-size: 0.7rem;
+      color: #475569;
+      font-weight: 500;
+    }
+
+    .no-data {
+      text-align: center;
+      padding: 3rem;
+      color: #64748b;
+    }
+    .loading {
+      text-align: center;
+      padding: 3rem;
+      color: #64748b;
+    }
+    .expand-icon {
+      transition: transform 0.2s;
+    }
+    .expand-icon.open {
+      transform: rotate(180deg);
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-content">
+      <a href="/dashboard.html" class="logo">営業日報システム</a>
+      <nav class="nav" id="main-nav">
+        <a href="/dashboard.html" class="nav-link">ホーム</a>
+        <a href="/report-list.html" class="nav-link">日報一覧</a>
+        <a href="/calendar.html" class="nav-link">カレンダー</a>
+      </nav>
+      <div class="user-info">
+        <span class="user-name" id="user-name">-</span>
+        <button class="btn btn-outline btn-sm btn-logout" onclick="logout()">ログアウト</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <div class="summary-container">
+      <h1 class="page-title">📊 週次サマリー</h1>
+
+      <!-- フィルター -->
+      <div class="filter-section">
+        <div class="week-nav">
+          <button onclick="prevWeek()">◀ 前週</button>
+          <span class="week-label" id="week-label">-</span>
+          <button onclick="nextWeek()">翌週 ▶</button>
+        </div>
+        <div class="form-group" style="margin: 0;">
+          <label class="form-label">部署</label>
+          <select id="filter-department" class="form-select" onchange="loadSummary()">
+            <option value="">全部署</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- コンテンツ -->
+      <div id="summary-content">
+        <div class="loading">読み込み中...</div>
+      </div>
+    </div>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script>
+    let currentWeekStart = null;
+    let departments = [];
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      const user = await checkAuth();
+      if (!user) return;
+
+      // 今週の月曜日を取得
+      const today = new Date();
+      const dayOfWeek = today.getDay();
+      const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+      currentWeekStart = new Date(today);
+      currentWeekStart.setDate(today.getDate() + diff);
+      currentWeekStart.setHours(0, 0, 0, 0);
+
+      await loadDepartments();
+      loadSummary();
+    });
+
+    async function loadDepartments() {
+      try {
+        const res = await fetch('/api/departments');
+        departments = await res.json();
+        const select = document.getElementById('filter-department');
+        departments.forEach(d => {
+          select.innerHTML += `<option value="${d.id}">${escapeHtml(d.name)}</option>`;
+        });
+      } catch (e) {
+        console.error('部署読み込みエラー:', e);
+      }
+    }
+
+    function prevWeek() {
+      currentWeekStart.setDate(currentWeekStart.getDate() - 7);
+      loadSummary();
+    }
+
+    function nextWeek() {
+      currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+      loadSummary();
+    }
+
+    function getWeekEnd() {
+      const end = new Date(currentWeekStart);
+      end.setDate(end.getDate() + 6);
+      return end;
+    }
+
+    function formatDateRange() {
+      const end = getWeekEnd();
+      const startStr = `${currentWeekStart.getMonth() + 1}/${currentWeekStart.getDate()}`;
+      const endStr = `${end.getMonth() + 1}/${end.getDate()}`;
+      return `${currentWeekStart.getFullYear()}年 ${startStr} 〜 ${endStr}`;
+    }
+
+    async function loadSummary() {
+      document.getElementById('week-label').textContent = formatDateRange();
+
+      const startDate = currentWeekStart.toISOString().slice(0, 10);
+      const endDate = getWeekEnd().toISOString().slice(0, 10);
+      const deptId = document.getElementById('filter-department').value;
+
+      let url = `/api/weekly-summary?start_date=${startDate}&end_date=${endDate}`;
+      if (deptId) url += `&department_id=${deptId}`;
+
+      try {
+        document.getElementById('summary-content').innerHTML = '<div class="loading">読み込み中...</div>';
+        const res = await fetch(url);
+        const data = await res.json();
+        renderSummary(data);
+      } catch (error) {
+        console.error('サマリー読み込みエラー:', error);
+        document.getElementById('summary-content').innerHTML = '<div class="no-data">データの読み込みに失敗しました</div>';
+      }
+    }
+
+    function renderSummary(data) {
+      const { teamSummary, members, keywords, report_count_by_date } = data;
+      const container = document.getElementById('summary-content');
+
+      if (teamSummary.total_reports === 0) {
+        container.innerHTML = '<div class="no-data">この週の日報データがありません</div>';
+        return;
+      }
+
+      let html = '';
+
+      // キーワードハイライト
+      html += '<div class="highlights-grid">';
+      html += renderKeywordCard('positive', '🎉 ポジティブ', keywords.positive);
+      html += renderKeywordCard('alert', '⚠️ アラート', keywords.alert);
+      html += renderKeywordCard('opportunity', '💡 商機', keywords.opportunity);
+      html += '</div>';
+
+      // チームサマリー
+      html += `
+        <div class="team-summary">
+          <h2>📈 チーム実績</h2>
+          <div class="stat-grid">
+            <div class="stat-card">
+              <div class="stat-value">${teamSummary.total_reports}</div>
+              <div class="stat-label">日報数</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">${teamSummary.total_visits}</div>
+              <div class="stat-label">総訪問数</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">${teamSummary.customer_visits}</div>
+              <div class="stat-label">得意先</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">${teamSummary.supplier_visits}</div>
+              <div class="stat-label">仕入先</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">${teamSummary.visited_customers.length}</div>
+              <div class="stat-label">訪問得意先数</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">${formatAmount(teamSummary.total_deal_amount)}</div>
+              <div class="stat-label">案件金額</div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      // 日別活動グラフ
+      if (report_count_by_date && report_count_by_date.length > 0) {
+        html += `
+          <div class="info-card" style="margin-bottom: 1.5rem;">
+            <h3>📅 日別日報提出状況</h3>
+            <div class="daily-chart">
+              ${renderDailyChart(report_count_by_date)}
+            </div>
+          </div>
+        `;
+      }
+
+      // 訪問先・メーカー
+      html += '<div class="info-grid">';
+      
+      // 得意先
+      html += `
+        <div class="info-card">
+          <h3>🏢 訪問得意先</h3>
+          <div class="tag-list">
+            ${teamSummary.visited_customers.length > 0 
+              ? teamSummary.visited_customers.map(c => `<span class="tag">${escapeHtml(c)}</span>`).join('')
+              : '<span class="text-muted">なし</span>'}
+          </div>
+        </div>
+      `;
+
+      // 仕入先
+      html += `
+        <div class="info-card">
+          <h3>🏭 訪問仕入先</h3>
+          <div class="tag-list">
+            ${teamSummary.visited_suppliers.length > 0 
+              ? teamSummary.visited_suppliers.map(s => `<span class="tag supplier">${escapeHtml(s)}</span>`).join('')
+              : '<span class="text-muted">なし</span>'}
+          </div>
+        </div>
+      `;
+
+      // メーカー
+      html += `
+        <div class="info-card">
+          <h3>📦 メーカー（商談登場回数）</h3>
+          <div class="tag-list">
+            ${teamSummary.top_manufacturers.length > 0 
+              ? teamSummary.top_manufacturers.map(m => 
+                  `<span class="tag mfr">${escapeHtml(m.name)}<span class="tag-count">${m.count}</span></span>`
+                ).join('')
+              : '<span class="text-muted">なし</span>'}
+          </div>
+        </div>
+      `;
+
+      html += '</div>';
+
+      // メンバー別
+      html += '<h2 style="margin: 1.5rem 0 1rem;">👥 メンバー別実績</h2>';
+      members.forEach((member, idx) => {
+        html += renderMemberSection(member, idx);
+      });
+
+      container.innerHTML = html;
+    }
+
+    function renderKeywordCard(type, title, items) {
+      const uniqueItems = [...new Map(items.map(i => [i.keyword + i.date, i])).values()].slice(0, 5);
+      return `
+        <div class="highlight-card ${type}">
+          <div class="highlight-title">${title}</div>
+          <div class="highlight-items">
+            ${uniqueItems.length > 0 
+              ? uniqueItems.map(i => `
+                  <div class="highlight-item">
+                    <strong>${escapeHtml(i.keyword)}</strong> - ${escapeHtml(i.user)} (${formatShortDate(i.date)})
+                  </div>
+                `).join('')
+              : '<div class="highlight-item" style="opacity: 0.7;">検出なし</div>'
+            }
+          </div>
+        </div>
+      `;
+    }
+
+    function renderDailyChart(data) {
+      // 週の全日を生成
+      const days = [];
+      const dayLabels = ['日', '月', '火', '水', '木', '金', '土'];
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(currentWeekStart);
+        d.setDate(d.getDate() + i);
+        const dateStr = d.toISOString().slice(0, 10);
+        const found = data.find(r => r.date === dateStr);
+        days.push({
+          date: dateStr,
+          label: dayLabels[d.getDay()],
+          count: found ? found.count : 0
+        });
+      }
+
+      const maxCount = Math.max(...days.map(d => d.count), 1);
+      return days.map(d => {
+        const height = (d.count / maxCount) * 40;
+        return `
+          <div class="daily-bar-wrapper">
+            <div class="daily-value">${d.count > 0 ? d.count : ''}</div>
+            <div class="daily-bar" style="height: ${height}px;"></div>
+            <div class="daily-label">${d.label}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderMemberSection(member, idx) {
+      return `
+        <div class="member-section">
+          <div class="member-header" onclick="toggleMember(${idx})">
+            <div class="member-info">
+              <span class="member-name">${escapeHtml(member.user_name)}</span>
+              <span class="member-dept">${escapeHtml(member.department_name || '-')}</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 1rem;">
+              <div class="member-stats">
+                <div class="member-stat">
+                  <span>日報</span>
+                  <span class="member-stat-value">${member.report_count}</span>
+                </div>
+                <div class="member-stat">
+                  <span>訪問</span>
+                  <span class="member-stat-value">${member.visit_count}</span>
+                </div>
+                <div class="member-stat">
+                  <span>得意先</span>
+                  <span class="member-stat-value">${member.customer_visits}</span>
+                </div>
+                <div class="member-stat">
+                  <span>仕入先</span>
+                  <span class="member-stat-value">${member.supplier_visits}</span>
+                </div>
+                ${member.deal_amount > 0 ? `
+                  <div class="member-stat">
+                    <span>金額</span>
+                    <span class="member-stat-value">${formatAmount(member.deal_amount)}</span>
+                  </div>
+                ` : ''}
+              </div>
+              <span class="expand-icon" id="expand-${idx}">▼</span>
+            </div>
+          </div>
+          <div class="member-details" id="details-${idx}">
+            <div class="member-detail-grid">
+              <div class="member-detail-card">
+                <div class="member-detail-title">訪問得意先</div>
+                <div class="tag-list">
+                  ${member.customers.length > 0 
+                    ? member.customers.map(c => `<span class="tag">${escapeHtml(c)}</span>`).join('')
+                    : '<span class="text-muted">なし</span>'}
+                </div>
+              </div>
+              <div class="member-detail-card">
+                <div class="member-detail-title">訪問仕入先</div>
+                <div class="tag-list">
+                  ${member.suppliers.length > 0 
+                    ? member.suppliers.map(s => `<span class="tag supplier">${escapeHtml(s)}</span>`).join('')
+                    : '<span class="text-muted">なし</span>'}
+                </div>
+              </div>
+            </div>
+            ${member.highlights.length > 0 ? `
+              <div class="member-detail-title" style="margin-bottom: 0.5rem;">📌 注目の活動</div>
+              ${member.highlights.map(h => `
+                <div class="member-highlight">
+                  <div class="member-highlight-header">
+                    <span>${formatShortDate(h.date)} - ${escapeHtml(h.target || '-')}</span>
+                    ${h.amount ? `<span>💰 ${formatAmount(h.amount)}</span>` : ''}
+                  </div>
+                  <div class="member-highlight-content">${escapeHtml(h.content || '')}</div>
+                  ${h.next_action ? `<div class="member-highlight-action">📌 ${escapeHtml(h.next_action)}</div>` : ''}
+                </div>
+              `).join('')}
+            ` : ''}
+          </div>
+        </div>
+      `;
+    }
+
+    function toggleMember(idx) {
+      const details = document.getElementById(`details-${idx}`);
+      const icon = document.getElementById(`expand-${idx}`);
+      details.classList.toggle('show');
+      icon.classList.toggle('open');
+    }
+
+    function formatAmount(amount) {
+      if (!amount) return '-';
+      if (amount >= 10000) {
+        return Math.round(amount / 10000) + '万';
+      }
+      return '¥' + Number(amount).toLocaleString();
+    }
+
+    function formatShortDate(dateStr) {
+      if (!dateStr) return '-';
+      const d = new Date(dateStr);
+      return `${d.getMonth() + 1}/${d.getDate()}`;
+    }
+  </script>
+</body>
+</html>

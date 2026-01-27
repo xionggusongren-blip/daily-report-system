@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>カレンダー - 営業日報システム</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .calendar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+    .calendar-nav {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .calendar-nav button {
+      padding: 0.5rem 1rem;
+      border: 1px solid var(--border-color);
+      background: white;
+      border-radius: 0.375rem;
+      cursor: pointer;
+      font-size: 1.25rem;
+    }
+    .calendar-nav button:hover {
+      background: var(--background-color);
+    }
+    .calendar-title {
+      font-size: 1.5rem;
+      font-weight: 600;
+      min-width: 200px;
+      text-align: center;
+    }
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 1px;
+      background: var(--border-color);
+      border: 1px solid var(--border-color);
+      border-radius: 0.5rem;
+      overflow: hidden;
+    }
+    .calendar-weekday {
+      background: var(--background-color);
+      padding: 0.75rem;
+      text-align: center;
+      font-weight: 600;
+      font-size: 0.875rem;
+      color: var(--text-muted);
+    }
+    .calendar-weekday.sun { color: #ef4444; }
+    .calendar-weekday.sat { color: #3b82f6; }
+    .calendar-day {
+      background: white;
+      min-height: 100px;
+      padding: 0.5rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .calendar-day:hover {
+      background: #f0f9ff;
+    }
+    .calendar-day.other-month {
+      background: #f9fafb;
+      color: #9ca3af;
+    }
+    .calendar-day.today {
+      background: #eff6ff;
+    }
+    .calendar-day.sun .day-number { color: #ef4444; }
+    .calendar-day.sat .day-number { color: #3b82f6; }
+    .calendar-day.holiday .day-number { color: #ef4444; }
+    .calendar-day.holiday {
+      background: #fef2f2;
+    }
+    .calendar-day.holiday:hover {
+      background: #fee2e2;
+    }
+    .holiday-name {
+      display: block;
+      font-size: 0.65rem;
+      color: #dc2626;
+      margin-bottom: 0.25rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .day-number {
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+    .day-content {
+      font-size: 0.75rem;
+    }
+    .report-indicator {
+      display: inline-block;
+      padding: 0.125rem 0.375rem;
+      border-radius: 0.25rem;
+      font-size: 0.7rem;
+      margin-bottom: 0.25rem;
+    }
+    .report-draft { background: #f3f4f6; color: #6b7280; }
+    .report-submitted { background: #fef3c7; color: #92400e; }
+    .report-confirmed { background: #d1fae5; color: #065f46; }
+    .report-rejected { background: #fee2e2; color: #991b1b; }
+    .visit-count {
+      display: block;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+    .visit-names {
+      display: block;
+      font-size: 0.65rem;
+      color: #4b5563;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 0.125rem;
+    }
+    .user-label {
+      display: inline-block;
+      font-size: 0.65rem;
+      font-weight: 600;
+      color: #1d4ed8;
+      margin-right: 0.25rem;
+    }
+    .report-entry {
+      background: #f8fafc;
+      border-radius: 0.25rem;
+      padding: 0.25rem;
+      margin-bottom: 0.25rem;
+      cursor: pointer;
+      border-left: 2px solid #3b82f6;
+    }
+    .report-entry:hover {
+      background: #e0f2fe;
+    }
+    .no-report {
+      color: #9ca3af;
+      font-size: 0.7rem;
+    }
+    .legend {
+      display: flex;
+      gap: 1rem;
+      margin-top: 1rem;
+      flex-wrap: wrap;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+    .legend-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 0.25rem;
+    }
+    .summary-card {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .summary-item {
+      text-align: center;
+      padding: 1rem;
+      background: var(--background-color);
+      border-radius: 0.5rem;
+    }
+    .summary-value {
+      font-size: 2rem;
+      font-weight: bold;
+      color: var(--primary-color);
+    }
+    .summary-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-content">
+      <a href="/dashboard.html" class="logo">営業日報システム</a>
+      <nav class="nav" id="main-nav">
+        <a href="/dashboard.html" class="nav-link">ホーム</a>
+        <a href="/report-list.html" class="nav-link">日報一覧</a>
+        <a href="/calendar.html" class="nav-link active">カレンダー</a>
+      </nav>
+      <div class="user-info">
+        <span class="user-name" id="user-name">-</span>
+        <button class="btn btn-outline btn-sm btn-logout" onclick="logout()">ログアウト</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <h1 class="page-title">📅 カレンダー</h1>
+
+    <!-- 月間サマリー -->
+    <div class="card">
+      <div class="summary-card">
+        <div class="summary-item">
+          <div class="summary-value" id="summary-reports">-</div>
+          <div class="summary-label">日報数</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-value" id="summary-submitted">-</div>
+          <div class="summary-label">提出済み</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-value" id="summary-confirmed">-</div>
+          <div class="summary-label">確認済み</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-value" id="summary-visits">-</div>
+          <div class="summary-label">訪問件数</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- カレンダー -->
+    <div class="card">
+      <div class="calendar-header">
+        <div class="calendar-nav">
+          <button onclick="prevMonth()">◀</button>
+          <div class="calendar-title" id="calendar-title">-</div>
+          <button onclick="nextMonth()">▶</button>
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <select id="user-select" class="form-select" style="width: auto; min-width: 150px;" onchange="loadCalendar()">
+            <option value="">自分</option>
+          </select>
+          <button class="btn btn-outline btn-sm" onclick="goToday()">今月</button>
+        </div>
+      </div>
+
+      <div class="calendar-grid" id="calendar-grid">
+        <div class="calendar-weekday sun">日</div>
+        <div class="calendar-weekday">月</div>
+        <div class="calendar-weekday">火</div>
+        <div class="calendar-weekday">水</div>
+        <div class="calendar-weekday">木</div>
+        <div class="calendar-weekday">金</div>
+        <div class="calendar-weekday sat">土</div>
+      </div>
+
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot report-draft"></div>下書き</div>
+        <div class="legend-item"><div class="legend-dot report-submitted"></div>提出済み</div>
+        <div class="legend-item"><div class="legend-dot report-confirmed"></div>確認済み</div>
+        <div class="legend-item"><div class="legend-dot report-rejected"></div>差し戻し</div>
+      </div>
+    </div>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script>
+    let currentYear, currentMonth;
+    let reportData = {};
+    let holidays = {};
+    let currentUserId = null;
+    let selectedUserId = null;
+
+    // 日本の祝日を計算
+    function getJapaneseHolidays(year) {
+      const h = {};
+      
+      // 固定祝日
+      h[`${year}-01-01`] = '元日';
+      h[`${year}-02-11`] = '建国記念の日';
+      h[`${year}-02-23`] = '天皇誕生日';
+      h[`${year}-04-29`] = '昭和の日';
+      h[`${year}-05-03`] = '憲法記念日';
+      h[`${year}-05-04`] = 'みどりの日';
+      h[`${year}-05-05`] = 'こどもの日';
+      h[`${year}-08-11`] = '山の日';
+      h[`${year}-11-03`] = '文化の日';
+      h[`${year}-11-23`] = '勤労感謝の日';
+
+      // 成人の日（1月第2月曜）
+      h[getNthWeekday(year, 1, 1, 2)] = '成人の日';
+      
+      // 海の日（7月第3月曜）
+      h[getNthWeekday(year, 7, 1, 3)] = '海の日';
+      
+      // 敬老の日（9月第3月曜）
+      h[getNthWeekday(year, 9, 1, 3)] = '敬老の日';
+      
+      // スポーツの日（10月第2月曜）
+      h[getNthWeekday(year, 10, 1, 2)] = 'スポーツの日';
+
+      // 春分の日（3月20日 or 21日）
+      const spring = getVernalEquinox(year);
+      h[`${year}-03-${String(spring).padStart(2, '0')}`] = '春分の日';
+
+      // 秋分の日（9月22日 or 23日）
+      const autumn = getAutumnalEquinox(year);
+      h[`${year}-09-${String(autumn).padStart(2, '0')}`] = '秋分の日';
+
+      // 振替休日の計算
+      const dates = Object.keys(h).sort();
+      dates.forEach(dateStr => {
+        const d = new Date(dateStr);
+        if (d.getDay() === 0) { // 日曜日
+          // 翌日が祝日でなければ振替休日
+          let next = new Date(d);
+          next.setDate(next.getDate() + 1);
+          let nextStr = formatDateStr(next);
+          while (h[nextStr]) {
+            next.setDate(next.getDate() + 1);
+            nextStr = formatDateStr(next);
+          }
+          h[nextStr] = '振替休日';
+        }
+      });
+
+      // 国民の休日（祝日に挟まれた平日）
+      const sortedDates = Object.keys(h).sort();
+      for (let i = 0; i < sortedDates.length - 1; i++) {
+        const d1 = new Date(sortedDates[i]);
+        const d2 = new Date(sortedDates[i + 1]);
+        const diff = (d2 - d1) / (1000 * 60 * 60 * 24);
+        if (diff === 2) {
+          const between = new Date(d1);
+          between.setDate(between.getDate() + 1);
+          const betweenStr = formatDateStr(between);
+          if (!h[betweenStr] && between.getDay() !== 0 && between.getDay() !== 6) {
+            h[betweenStr] = '国民の休日';
+          }
+        }
+      }
+
+      return h;
+    }
+
+    // 第n週の曜日を取得
+    function getNthWeekday(year, month, weekday, n) {
+      const first = new Date(year, month - 1, 1);
+      let day = 1 + (weekday - first.getDay() + 7) % 7;
+      day += (n - 1) * 7;
+      return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    }
+
+    // 春分の日を計算
+    function getVernalEquinox(year) {
+      return Math.floor(20.8431 + 0.242194 * (year - 1980) - Math.floor((year - 1980) / 4));
+    }
+
+    // 秋分の日を計算
+    function getAutumnalEquinox(year) {
+      return Math.floor(23.2488 + 0.242194 * (year - 1980) - Math.floor((year - 1980) / 4));
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      const user = await checkAuth();
+      if (!user) return;
+
+      currentUserId = user.id;
+
+      const now = new Date();
+      currentYear = now.getFullYear();
+      currentMonth = now.getMonth() + 1;
+
+      // ユーザー一覧を読み込み
+      await loadUsers();
+
+      await loadCalendar();
+    });
+
+    async function loadUsers() {
+      try {
+        const res = await fetch('/api/users');
+        const users = await res.json();
+        
+        const select = document.getElementById('user-select');
+        users.forEach(u => {
+          if (u.id !== currentUserId) {
+            const opt = document.createElement('option');
+            opt.value = u.id;
+            opt.textContent = u.name;
+            select.appendChild(opt);
+          }
+        });
+        
+        // 全員表示オプションを追加
+        const allOpt = document.createElement('option');
+        allOpt.value = 'all';
+        allOpt.textContent = '── 全員 ──';
+        select.appendChild(allOpt);
+      } catch (error) {
+        console.error('ユーザー一覧読み込みエラー:', error);
+      }
+    }
+
+    function prevMonth() {
+      currentMonth--;
+      if (currentMonth < 1) {
+        currentMonth = 12;
+        currentYear--;
+      }
+      loadCalendar();
+    }
+
+    function nextMonth() {
+      currentMonth++;
+      if (currentMonth > 12) {
+        currentMonth = 1;
+        currentYear++;
+      }
+      loadCalendar();
+    }
+
+    function goToday() {
+      const now = new Date();
+      currentYear = now.getFullYear();
+      currentMonth = now.getMonth() + 1;
+      loadCalendar();
+    }
+
+    async function loadCalendar() {
+      selectedUserId = document.getElementById('user-select').value;
+      
+      // タイトル更新
+      let titleSuffix = '';
+      if (selectedUserId) {
+        const select = document.getElementById('user-select');
+        const selectedOption = select.options[select.selectedIndex];
+        titleSuffix = ` - ${selectedOption.textContent}`;
+      }
+      document.getElementById('calendar-title').textContent = `${currentYear}年 ${currentMonth}月${titleSuffix}`;
+
+      // 祝日を計算
+      holidays = getJapaneseHolidays(currentYear);
+
+      try {
+        let url = `/api/calendar?year=${currentYear}&month=${currentMonth}`;
+        if (selectedUserId) {
+          url += `&user_id=${selectedUserId}`;
+        }
+        const res = await fetch(url);
+        const data = await res.json();
+
+        // データをマップに変換（全員表示の場合は配列）
+        reportData = {};
+        if (selectedUserId === 'all') {
+          data.forEach(r => {
+            if (!reportData[r.report_date]) {
+              reportData[r.report_date] = [];
+            }
+            reportData[r.report_date].push(r);
+          });
+        } else {
+          data.forEach(r => {
+            reportData[r.report_date] = r;
+          });
+        }
+
+        renderCalendar();
+        updateSummary(data);
+      } catch (error) {
+        console.error('カレンダー読み込みエラー:', error);
+      }
+    }
+
+    function renderCalendar() {
+      const grid = document.getElementById('calendar-grid');
+      
+      // ヘッダー行を保持
+      const header = grid.innerHTML.split('</div>').slice(0, 7).join('</div>') + '</div>';
+      
+      // 月の最初の日と最後の日を取得
+      const firstDay = new Date(currentYear, currentMonth - 1, 1);
+      const lastDay = new Date(currentYear, currentMonth, 0);
+      const startDayOfWeek = firstDay.getDay();
+      const daysInMonth = lastDay.getDate();
+
+      // 前月の日数
+      const prevLastDay = new Date(currentYear, currentMonth - 1, 0);
+      const prevDays = prevLastDay.getDate();
+
+      // 今日の日付
+      const today = new Date();
+      const todayStr = formatDateStr(today);
+
+      let html = header;
+
+      // 前月の日
+      for (let i = startDayOfWeek - 1; i >= 0; i--) {
+        const day = prevDays - i;
+        const dayOfWeek = (startDayOfWeek - i - 1 + 7) % 7;
+        html += `<div class="calendar-day other-month ${getDayClass(dayOfWeek)}">
+          <div class="day-number">${day}</div>
+        </div>`;
+      }
+
+      // 当月の日
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const dayOfWeek = (startDayOfWeek + day - 1) % 7;
+        const isToday = dateStr === todayStr;
+        const reportEntry = reportData[dateStr];
+        const holiday = holidays[dateStr];
+        const isHoliday = !!holiday;
+
+        let dayContent = '';
+        
+        // 祝日名を表示
+        if (holiday) {
+          dayContent += `<span class="holiday-name">${holiday}</span>`;
+        }
+
+        // 全員表示の場合（配列）
+        if (selectedUserId === 'all' && Array.isArray(reportEntry)) {
+          reportEntry.forEach(report => {
+            const statusClass = `report-${report.status}`;
+            const statusLabel = getStatusLabel(report.status);
+            
+            // 訪問先名を表示（最大2件）
+            let visitNames = '';
+            if (report.visits && report.visits.length > 0) {
+              const names = report.visits.slice(0, 2).map(v => v.name).filter(n => n);
+              if (names.length > 0) {
+                visitNames = names.join(', ') + (report.visits.length > 2 ? '...' : '');
+              }
+            }
+            
+            dayContent += `
+              <div class="report-entry" onclick="event.stopPropagation(); location.href='/report-detail.html?id=${report.id}'">
+                <span class="user-label">${report.user_name}</span>
+                <span class="report-indicator ${statusClass}">${statusLabel}</span>
+                ${visitNames ? `<span class="visit-names">${visitNames}</span>` : ''}
+              </div>
+            `;
+          });
+        } 
+        // 個人表示の場合
+        else if (reportEntry && !Array.isArray(reportEntry)) {
+          const report = reportEntry;
+          const statusClass = `report-${report.status}`;
+          const statusLabel = getStatusLabel(report.status);
+          
+          // 訪問先名を表示（最大3件）
+          let visitNames = '';
+          if (report.visits && report.visits.length > 0) {
+            const names = report.visits.slice(0, 3).map(v => v.name).filter(n => n);
+            if (names.length > 0) {
+              visitNames = `<span class="visit-names">${names.join(', ')}${report.visits.length > 3 ? '...' : ''}</span>`;
+            }
+          }
+          
+          dayContent += `
+            <span class="report-indicator ${statusClass}">${statusLabel}</span>
+            ${report.visit_count > 0 ? `<span class="visit-count">訪問: ${report.visit_count}件</span>` : ''}
+            ${visitNames}
+          `;
+        }
+
+        const dayClass = isHoliday ? 'holiday' : getDayClass(dayOfWeek);
+        
+        // クリックイベント（個人表示の場合のみ）
+        const clickHandler = selectedUserId === 'all' 
+          ? '' 
+          : `onclick="onDayClick('${dateStr}', ${reportEntry ? reportEntry.id : 'null'})"`;
+
+        html += `
+          <div class="calendar-day ${dayClass} ${isToday ? 'today' : ''}" ${clickHandler}>
+            <div class="day-number">${day}</div>
+            <div class="day-content">${dayContent}</div>
+          </div>
+        `;
+      }
+
+      // 次月の日
+      const totalCells = startDayOfWeek + daysInMonth;
+      const remainingCells = (7 - (totalCells % 7)) % 7;
+      for (let day = 1; day <= remainingCells; day++) {
+        const dayOfWeek = (totalCells + day - 1) % 7;
+        html += `<div class="calendar-day other-month ${getDayClass(dayOfWeek)}">
+          <div class="day-number">${day}</div>
+        </div>`;
+      }
+
+      grid.innerHTML = html;
+    }
+
+    function getDayClass(dayOfWeek) {
+      if (dayOfWeek === 0) return 'sun';
+      if (dayOfWeek === 6) return 'sat';
+      return '';
+    }
+
+    function isWeekday(dayOfWeek) {
+      return dayOfWeek >= 1 && dayOfWeek <= 5;
+    }
+
+    function isFutureDate(dateStr) {
+      return dateStr > formatDateStr(new Date());
+    }
+
+    function formatDateStr(date) {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    function getStatusLabel(status) {
+      const labels = {
+        'draft': '下書き',
+        'submitted': '提出済み',
+        'confirmed': '確認済み',
+        'rejected': '差し戻し'
+      };
+      return labels[status] || status;
+    }
+
+    function updateSummary(data) {
+      const total = data.length;
+      const submitted = data.filter(r => r.status === 'submitted').length;
+      const confirmed = data.filter(r => r.status === 'confirmed').length;
+      const visits = data.reduce((sum, r) => sum + (r.visit_count || 0), 0);
+
+      document.getElementById('summary-reports').textContent = total;
+      document.getElementById('summary-submitted').textContent = submitted;
+      document.getElementById('summary-confirmed').textContent = confirmed;
+      document.getElementById('summary-visits').textContent = visits;
+    }
+
+    function onDayClick(dateStr, reportId) {
+      if (reportId) {
+        window.location.href = `/report-detail.html?id=${reportId}`;
+      } else if (!selectedUserId && !isFutureDate(dateStr)) {
+        // 自分のカレンダーの場合のみ日報作成を促す
+        if (confirm(`${dateStr} の日報を作成しますか？`)) {
+          window.location.href = `/report-new.html?date=${dateStr}`;
+        }
+      }
+    }
+  </script>
+</body>
+</html>

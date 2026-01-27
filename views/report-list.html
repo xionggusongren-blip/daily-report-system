@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>日報一覧 - 営業日報システム</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .visit-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.25rem;
+    }
+    .visit-tag {
+      display: inline-block;
+      padding: 0.125rem 0.5rem;
+      border-radius: 9999px;
+      font-size: 0.7rem;
+      white-space: nowrap;
+    }
+    .visit-tag.customer {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+    .visit-tag.supplier {
+      background: #ffedd5;
+      color: #9a3412;
+    }
+  </style>
+</head>
+<body>
+  <!-- ヘッダー -->
+  <header class="header">
+    <div class="header-content">
+      <a href="/dashboard.html" class="logo">営業日報システム</a>
+      <nav class="nav" id="main-nav">
+        <a href="/dashboard.html" class="nav-link">ホーム</a>
+        <a href="/report-list.html" class="nav-link active">日報一覧</a>
+        <a href="/calendar.html" class="nav-link">カレンダー</a>
+      </nav>
+      <div class="user-info">
+        <span class="user-name" id="user-name">-</span>
+        <button class="btn btn-outline btn-sm btn-logout" onclick="logout()">ログアウト</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- メインコンテンツ -->
+  <main class="main-content">
+    <h1 class="page-title">日報一覧</h1>
+
+    <!-- フィルター -->
+    <div class="card">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">期間（開始）</label>
+          <input type="date" id="filter-from" class="form-input">
+        </div>
+        <div class="form-group">
+          <label class="form-label">期間（終了）</label>
+          <input type="date" id="filter-to" class="form-input">
+        </div>
+        <div class="form-group">
+          <label class="form-label">ステータス</label>
+          <select id="filter-status" class="form-select">
+            <option value="">すべて</option>
+            <option value="draft">下書き</option>
+            <option value="submitted">提出済み</option>
+            <option value="confirmed">確認済み</option>
+            <option value="rejected">差し戻し</option>
+          </select>
+        </div>
+        <div class="form-group" style="display: flex; align-items: flex-end;">
+          <button type="button" class="btn btn-primary" onclick="loadReports()">検索</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 日報リスト -->
+    <div class="card">
+      <div class="table-container">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>日付</th>
+              <th>勤務</th>
+              <th>訪問先</th>
+              <th>業務内容</th>
+              <th>ステータス</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="report-list">
+            <tr>
+              <td colspan="6" class="text-center text-muted">読み込み中...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 新規作成ボタン -->
+    <div class="text-center">
+      <a href="/report-new.html" class="btn btn-primary btn-lg">新しい日報を作成</a>
+    </div>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script>
+    const FILTER_KEY = 'reportListFilters';
+
+    // ページ読み込み時
+    document.addEventListener('DOMContentLoaded', async () => {
+      const user = await checkAuth();
+      if (!user) return;
+
+      // 保存されたフィルターを復元、なければ今月
+      const saved = sessionStorage.getItem(FILTER_KEY);
+      if (saved) {
+        const filters = JSON.parse(saved);
+        document.getElementById('filter-from').value = filters.from || '';
+        document.getElementById('filter-to').value = filters.to || '';
+        document.getElementById('filter-status').value = filters.status || '';
+      } else {
+        const now = new Date();
+        const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+        document.getElementById('filter-from').value = formatDateInput(firstDay);
+        document.getElementById('filter-to').value = getTodayString();
+      }
+
+      // 日報読み込み
+      loadReports();
+    });
+
+    // フィルターを保存
+    function saveFilters() {
+      const filters = {
+        from: document.getElementById('filter-from').value,
+        to: document.getElementById('filter-to').value,
+        status: document.getElementById('filter-status').value
+      };
+      sessionStorage.setItem(FILTER_KEY, JSON.stringify(filters));
+    }
+
+    // 日付をinput[type=date]用にフォーマット
+    function formatDateInput(date) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    // 訪問先をタグ形式で表示
+    function formatVisits(visits) {
+      if (!visits || visits.length === 0) {
+        return '<span class="text-muted">-</span>';
+      }
+      return '<div class="visit-tags">' + visits.map(v => {
+        const typeClass = v.visit_type === 'supplier' ? 'supplier' : 'customer';
+        return `<span class="visit-tag ${typeClass}">${escapeHtml(v.target_name)}</span>`;
+      }).join('') + '</div>';
+    }
+
+    // 日報読み込み
+    async function loadReports() {
+      const from = document.getElementById('filter-from').value;
+      const to = document.getElementById('filter-to').value;
+      const status = document.getElementById('filter-status').value;
+
+      // フィルターを保存
+      saveFilters();
+
+      let url = '/api/reports?';
+      if (from) url += `from=${from}&`;
+      if (to) url += `to=${to}&`;
+      if (status) url += `status=${status}&`;
+
+      try {
+        const res = await fetch(url);
+        const reports = await res.json();
+
+        const tbody = document.getElementById('report-list');
+
+        if (reports.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">日報がありません</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = reports.map(r => `
+          <tr>
+            <td style="white-space: nowrap;">${formatDateWithDay(r.report_date)}</td>
+            <td>${formatWorkStyle(r.work_style)}</td>
+            <td>${formatVisits(r.visits)}</td>
+            <td class="text-truncate" style="max-width: 250px;">${escapeHtml(truncate(r.work_content, 40))}</td>
+            <td>${formatStatus(r.status)}</td>
+            <td>
+              <a href="/report-detail.html?id=${r.id}" class="btn btn-sm btn-outline">詳細</a>
+            </td>
+          </tr>
+        `).join('');
+
+      } catch (error) {
+        console.error('日報読み込みエラー:', error);
+        document.getElementById('report-list').innerHTML = 
+          '<tr><td colspan="6" class="text-center text-danger">読み込みエラー</td></tr>';
+      }
+    }
+
+    // 文字列を指定文字数で切る
+    function truncate(str, len) {
+      if (!str) return '';
+      if (str.length <= len) return str;
+      return str.substring(0, len) + '...';
+    }
+  </script>
+</body>
+</html>

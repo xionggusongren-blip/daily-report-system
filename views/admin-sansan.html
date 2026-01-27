@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sansan連携設定 - 営業日報システム</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      border-radius: 2rem;
+      font-weight: 500;
+    }
+    .status-badge.connected {
+      background: #dcfce7;
+      color: #166534;
+    }
+    .status-badge.disconnected {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+    .api-key-display {
+      font-family: monospace;
+      background: #f1f5f9;
+      padding: 0.5rem 1rem;
+      border-radius: 0.375rem;
+      display: inline-block;
+    }
+    .feature-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 0.5rem;
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+    }
+    .feature-card h4 {
+      margin: 0 0 0.5rem 0;
+      color: #1e40af;
+    }
+    .feature-card p {
+      margin: 0;
+      font-size: 0.875rem;
+      color: #64748b;
+    }
+    .search-result {
+      border: 1px solid #e2e8f0;
+      border-radius: 0.5rem;
+      padding: 1rem;
+      margin-bottom: 0.5rem;
+      background: white;
+    }
+    .search-result:hover {
+      border-color: #3b82f6;
+      background: #f8fafc;
+    }
+    .search-result h4 {
+      margin: 0 0 0.25rem 0;
+    }
+    .search-result .company {
+      color: #1e40af;
+      font-weight: 500;
+    }
+    .search-result .meta {
+      font-size: 0.875rem;
+      color: #64748b;
+      margin-top: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+  <!-- ヘッダー -->
+  <header class="header">
+    <div class="header-content">
+      <a href="/dashboard.html" class="logo">営業日報システム</a>
+      <nav class="nav" id="main-nav">
+        <a href="/dashboard.html" class="nav-link">ホーム</a>
+        <a href="/report-list.html" class="nav-link">日報一覧</a>
+        <a href="/calendar.html" class="nav-link">カレンダー</a>
+        <a href="/team-reports.html" class="nav-link">チーム日報</a>
+      </nav>
+      <div class="user-info">
+        <span class="user-name" id="user-name">-</span>
+        <button class="btn btn-outline btn-sm btn-logout" onclick="logout()">ログアウト</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <h1>📇 Sansan連携設定</h1>
+
+    <!-- ステータス表示 -->
+    <div class="card">
+      <h2 class="card-title">連携ステータス</h2>
+      <div id="status-area">
+        <span class="status-badge disconnected">⚪ 確認中...</span>
+      </div>
+    </div>
+
+    <!-- API設定 -->
+    <div class="card">
+      <h2 class="card-title">API設定</h2>
+      
+      <div class="form-group">
+        <label class="form-label">APIキー</label>
+        <div id="current-key-display" style="margin-bottom: 0.5rem;"></div>
+        <input type="password" id="api-key" class="form-input" placeholder="新しいAPIキーを入力（変更する場合のみ）">
+        <p style="font-size: 0.875rem; color: #64748b; margin-top: 0.25rem;">
+          Sansan管理画面 → 外部サービス連携 → Sansan Open API からAPIキーを取得できます
+        </p>
+      </div>
+
+      <div class="form-group">
+        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+          <input type="checkbox" id="enabled" style="width: 1.25rem; height: 1.25rem;">
+          <span>Sansan連携を有効にする</span>
+        </label>
+      </div>
+
+      <div style="display: flex; gap: 0.5rem;">
+        <button type="button" class="btn btn-primary" onclick="saveSettings()">設定を保存</button>
+        <button type="button" class="btn btn-outline" onclick="testConnection()">接続テスト</button>
+      </div>
+
+      <div id="test-result" style="margin-top: 1rem;"></div>
+    </div>
+
+    <!-- 機能説明 -->
+    <div class="card">
+      <h2 class="card-title">連携でできること</h2>
+      
+      <div class="feature-card">
+        <h4>🔍 名刺情報の検索</h4>
+        <p>日報の商談内容に記載された人名や会社名から、Sansanに登録された名刺情報を検索・表示します</p>
+      </div>
+
+      <div class="feature-card">
+        <h4>👤 担当者情報の自動紐づけ</h4>
+        <p>「○○様」「○○部長」などの人名表記を自動検出し、名刺情報へのリンクを表示します</p>
+      </div>
+
+      <div class="feature-card">
+        <h4>📊 名刺交換履歴の活用</h4>
+        <p>いつ、誰が名刺交換したかの情報を日報と組み合わせて表示します</p>
+      </div>
+    </div>
+
+    <!-- 名刺検索 -->
+    <div class="card">
+      <h2 class="card-title">🔍 名刺検索</h2>
+      <p style="color: #64748b; margin-bottom: 1rem;">Sansanに登録されている名刺を検索できます（APIキー発行者のアクセス権限範囲内）</p>
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">名前</label>
+          <input type="text" id="search-name" class="form-input" placeholder="例: 田中">
+        </div>
+        <div class="form-group">
+          <label class="form-label">会社名</label>
+          <input type="text" id="search-company" class="form-input" placeholder="例: 東京電子">
+        </div>
+        <div class="form-group">
+          <label class="form-label">メールアドレス</label>
+          <input type="text" id="search-email" class="form-input" placeholder="例: tanaka@example.com">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">部署名</label>
+          <input type="text" id="search-department" class="form-input" placeholder="例: 営業部">
+        </div>
+        <div class="form-group">
+          <label class="form-label">電話番号</label>
+          <input type="text" id="search-tel" class="form-input" placeholder="例: 03-1234-5678">
+        </div>
+        <div class="form-group">
+          <label class="form-label">検索範囲</label>
+          <select id="search-range" class="form-select">
+            <option value="all">全体（アクセス権のある全名刺）</option>
+            <option value="me">自分の名刺のみ</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top: 0.75rem;">
+        <button type="button" class="btn btn-primary" onclick="searchCards()">🔍 検索</button>
+        <button type="button" class="btn btn-outline" onclick="clearSearch()">クリア</button>
+      </div>
+
+      <div id="search-results" style="margin-top: 1rem;"></div>
+      <div id="search-pagination" style="margin-top: 1rem; text-align: center;"></div>
+    </div>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const user = await checkAuth();
+      if (!user || user.role !== 'admin') {
+        alert('管理者権限が必要です');
+        location.href = '/dashboard.html';
+        return;
+      }
+      loadSettings();
+    });
+
+    async function loadSettings() {
+      try {
+        const res = await fetch('/api/sansan/settings');
+        if (res.ok) {
+          const settings = await res.json();
+          
+          // ステータス表示
+          const statusArea = document.getElementById('status-area');
+          if (settings.enabled && settings.has_api_key) {
+            statusArea.innerHTML = '<span class="status-badge connected">🟢 連携中</span>';
+          } else if (settings.has_api_key) {
+            statusArea.innerHTML = '<span class="status-badge disconnected">⚪ 無効（APIキー設定済み）</span>';
+          } else {
+            statusArea.innerHTML = '<span class="status-badge disconnected">🔴 未設定</span>';
+          }
+          
+          // APIキー表示
+          const keyDisplay = document.getElementById('current-key-display');
+          if (settings.has_api_key) {
+            keyDisplay.innerHTML = `<span class="api-key-display">${settings.api_key_masked}</span>`;
+          } else {
+            keyDisplay.innerHTML = '<span style="color: #64748b;">APIキーが設定されていません</span>';
+          }
+          
+          document.getElementById('enabled').checked = settings.enabled;
+        }
+      } catch (error) {
+        console.error('設定読み込みエラー:', error);
+      }
+    }
+
+    async function saveSettings() {
+      const apiKey = document.getElementById('api-key').value;
+      const enabled = document.getElementById('enabled').checked;
+
+      try {
+        const res = await fetch('/api/sansan/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ api_key: apiKey || null, enabled })
+        });
+
+        if (res.ok) {
+          alert('設定を保存しました');
+          document.getElementById('api-key').value = '';
+          loadSettings();
+        } else {
+          const err = await res.json();
+          alert('保存エラー: ' + err.error);
+        }
+      } catch (error) {
+        alert('エラー: ' + error.message);
+      }
+    }
+
+    async function testConnection() {
+      const resultDiv = document.getElementById('test-result');
+      resultDiv.innerHTML = '<span style="color: #64748b;">接続中...</span>';
+
+      try {
+        const res = await fetch('/api/sansan/test', { method: 'POST' });
+        const data = await res.json();
+
+        if (res.ok) {
+          resultDiv.innerHTML = `
+            <div style="background: #dcfce7; color: #166534; padding: 1rem; border-radius: 0.5rem;">
+              ✅ ${data.message}<br>
+              <span style="font-size: 0.875rem;">タグ数: ${data.tagCount}件</span>
+            </div>
+          `;
+        } else {
+          resultDiv.innerHTML = `
+            <div style="background: #fee2e2; color: #991b1b; padding: 1rem; border-radius: 0.5rem;">
+              ❌ ${data.error}<br>
+              <span style="font-size: 0.875rem;">${data.details || ''}</span>
+            </div>
+          `;
+        }
+      } catch (error) {
+        resultDiv.innerHTML = `
+          <div style="background: #fee2e2; color: #991b1b; padding: 1rem; border-radius: 0.5rem;">
+            ❌ 接続エラー: ${error.message}
+          </div>
+        `;
+      }
+    }
+
+    async function searchCards() {
+      const name = document.getElementById('search-name').value;
+      const company = document.getElementById('search-company').value;
+      const email = document.getElementById('search-email').value;
+      const department = document.getElementById('search-department').value;
+      const tel = document.getElementById('search-tel').value;
+      const range = document.getElementById('search-range').value;
+      const resultsDiv = document.getElementById('search-results');
+      const paginationDiv = document.getElementById('search-pagination');
+
+      if (!name && !company && !email && !department && !tel) {
+        alert('少なくとも1つの検索条件を入力してください');
+        return;
+      }
+
+      resultsDiv.innerHTML = '<span style="color: #64748b;">🔍 検索中...</span>';
+      paginationDiv.innerHTML = '';
+
+      try {
+        let url = '/api/sansan/search?';
+        if (name) url += `name=${encodeURIComponent(name)}&`;
+        if (company) url += `company=${encodeURIComponent(company)}&`;
+        if (email) url += `email=${encodeURIComponent(email)}&`;
+        if (department) url += `department=${encodeURIComponent(department)}&`;
+        if (tel) url += `tel=${encodeURIComponent(tel)}&`;
+        url += `range=${range}&limit=100`;
+
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (res.ok) {
+          if (data.cards && data.cards.length > 0) {
+            const rangeLabel = range === 'all' ? '（全体検索）' : '（自分の名刺）';
+            resultsDiv.innerHTML = `
+              <div style="margin-bottom: 1rem; color: #64748b; font-weight: 500;">
+                📋 ${data.cards.length}件の名刺が見つかりました ${rangeLabel} ${data.hasMore ? '（さらに結果あり）' : ''}
+              </div>
+            ` + data.cards.map(card => `
+              <div class="search-result">
+                <h4>${escapeHtml(card.lastName || '')}${escapeHtml(card.firstName || '')} 
+                  <span style="font-weight: normal; font-size: 0.875rem; color: #64748b;">
+                    ${escapeHtml(card.lastNameReading || '')} ${escapeHtml(card.firstNameReading || '')}
+                  </span>
+                </h4>
+                <div class="company">${escapeHtml(card.companyName || '-')}</div>
+                <div style="font-size: 0.875rem; color: #475569;">
+                  ${escapeHtml(card.departmentName || '')} ${escapeHtml(card.title || '')}
+                </div>
+                <div class="meta">
+                  ${card.email ? `📧 <a href="mailto:${escapeHtml(card.email)}">${escapeHtml(card.email)}</a>` : ''}
+                  ${card.mobile ? `📱 ${escapeHtml(card.mobile)}` : ''}
+                  ${card.tel ? `☎ ${escapeHtml(card.tel)}` : ''}
+                </div>
+                <div class="meta">
+                  📅 名刺交換日: ${card.exchangeDate || '-'} / 👤 登録者: ${escapeHtml(card.owner || '-')}
+                </div>
+              </div>
+            `).join('');
+          } else {
+            resultsDiv.innerHTML = '<p style="color: #64748b;">該当する名刺が見つかりませんでした</p>';
+          }
+        } else {
+          resultsDiv.innerHTML = `<p style="color: #991b1b;">エラー: ${data.error}</p>`;
+        }
+      } catch (error) {
+        resultsDiv.innerHTML = `<p style="color: #991b1b;">エラー: ${error.message}</p>`;
+      }
+    }
+
+    function clearSearch() {
+      document.getElementById('search-name').value = '';
+      document.getElementById('search-company').value = '';
+      document.getElementById('search-email').value = '';
+      document.getElementById('search-department').value = '';
+      document.getElementById('search-tel').value = '';
+      document.getElementById('search-range').value = 'all';
+      document.getElementById('search-results').innerHTML = '';
+      document.getElementById('search-pagination').innerHTML = '';
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str.replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[c]));
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,1735 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>日報作成 - 営業日報システム</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <!-- ヘッダー -->
+  <header class="header">
+    <div class="header-content">
+      <a href="/dashboard.html" class="logo">営業日報システム</a>
+      <nav class="nav" id="main-nav">
+        <a href="/dashboard.html" class="nav-link">ホーム</a>
+        <a href="/report-list.html" class="nav-link">日報一覧</a>
+        <a href="/calendar.html" class="nav-link">カレンダー</a>
+      </nav>
+      <div class="user-info">
+        <span class="user-name" id="user-name">-</span>
+        <button class="btn btn-outline btn-sm btn-logout" onclick="logout()">ログアウト</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- メインコンテンツ -->
+  <main class="main-content">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+      <h1 class="page-title" style="margin: 0;">日報を書く</h1>
+      <span id="autosave-status" style="font-size: 0.8rem; color: #64748b;"></span>
+    </div>
+
+    <!-- クイックアクション（訪問追加を目立たせる） -->
+    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.5rem;">
+      <button type="button" class="btn btn-primary" onclick="addVisit()" style="font-size: 1rem; padding: 0.75rem 1.25rem;">
+        📍 訪問を記録する
+      </button>
+      <button type="button" class="btn btn-outline btn-sm" onclick="showFavorites()">⭐ お気に入り</button>
+      <button type="button" class="btn btn-outline btn-sm" onclick="showTemplates()">📝 テンプレート</button>
+      <button type="button" class="btn btn-outline btn-sm" onclick="copyFromPrevious()">📋 前日コピー</button>
+      <button type="button" class="btn btn-sm" id="ai-generate-btn" onclick="showAiMemoInput()" style="display: none; background: linear-gradient(135deg, #8b5cf6, #6366f1); color: white; border: none;">
+        ✨ AIで生成
+      </button>
+    </div>
+
+    <!-- AI メモ入力エリア（初期非表示） -->
+    <div id="ai-memo-section" class="card" style="display: none; border: 2px solid #8b5cf6; background: linear-gradient(135deg, #faf5ff, #eef2ff);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2 class="card-title" style="margin: 0; color: #6d28d9;">✨ AIで訪問記録を作成</h2>
+        <button type="button" onclick="hideAiMemoInput()" style="background: none; border: none; font-size: 1.25rem; cursor: pointer; color: #64748b;">×</button>
+      </div>
+      <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 0.5rem;">
+        会社名と商談内容を入力してください。AIが訪問記録に変換します。
+      </p>
+      <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 1rem;">
+        💡 形式: 「会社名　商談内容」（会社名の後にスペース）
+      </p>
+      <div class="form-group">
+        <textarea id="ai-memo-input" class="form-textarea" rows="5" 
+          placeholder="滝沢電機　新規案件ヒアリング、コンデンサ見積依頼&#10;アジア電気　定期訪問、リピート受注確定&#10;ABC商事様　サンプル提出、好感触"></textarea>
+      </div>
+      <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+        <button type="button" class="btn btn-outline" onclick="hideAiMemoInput()">キャンセル</button>
+        <button type="button" class="btn" onclick="generateFromMemo()" style="background: linear-gradient(135deg, #8b5cf6, #6366f1); color: white; border: none;">
+          ✨ 抽出する
+        </button>
+      </div>
+      <div id="ai-generating" style="display: none; text-align: center; padding: 1rem; color: #6d28d9;">
+        <span>抽出中...</span>
+      </div>
+    </div>
+
+    <!-- AI訪問先選択モーダル -->
+    <div id="ai-visits-modal" class="modal" style="display: none;">
+      <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-header">
+          <h3>📍 訪問先の確認</h3>
+          <button type="button" class="modal-close" onclick="closeAiVisitsModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 1rem;">
+            AIが抽出した訪問先をマスターと紐づけてください。
+          </p>
+          <div id="ai-visits-list"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeAiVisitsModal()">スキップ</button>
+          <button type="button" class="btn btn-primary" onclick="applyAiVisits()">訪問記録に追加</button>
+        </div>
+      </div>
+    </div>
+
+    <form id="report-form">
+      <!-- 基本情報 -->
+      <div class="card">
+        <h2 class="card-title">基本情報</h2>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label required" for="report_date">日付</label>
+            <input type="date" id="report_date" name="report_date" class="form-input" required>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label required" for="work_style">勤務形態</label>
+            <select id="work_style" name="work_style" class="form-select" required>
+              <option value="">選択してください</option>
+              <option value="office">出社</option>
+              <option value="remote">在宅</option>
+              <option value="outside">外出</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- 訪問記録（外出時のメイン機能なので上に配置） -->
+      <div class="card" id="visit-section">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <h2 class="card-title" style="margin: 0;">📍 訪問記録</h2>
+          <button type="button" class="btn btn-primary btn-sm" onclick="addVisit()">＋ 訪問を追加</button>
+        </div>
+        
+        <div id="visits-container">
+          <!-- 訪問記録は動的に追加 -->
+        </div>
+        
+        <div id="visits-empty" class="empty-state">
+          <p>訪問記録がありません</p>
+          <button type="button" class="btn btn-primary" onclick="addVisit()" style="padding: 0.75rem 1.5rem;">＋ 訪問記録を追加</button>
+        </div>
+      </div>
+
+      <!-- 業務内容（任意・折りたたみ） -->
+      <div class="card">
+        <details>
+          <summary style="cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
+            <h2 class="card-title" style="margin: 0;">業務内容・成果</h2>
+            <span style="font-size: 0.8rem; color: var(--text-muted);">（クリックで展開）</span>
+          </summary>
+          <div style="padding-top: 1rem;">
+            <div class="form-group">
+              <label class="form-label" for="work_content">本日の業務内容</label>
+              <div class="input-hint">💡 例：見積作成2件、社内会議出席、資料作成など（訪問以外の業務）</div>
+              <textarea id="work_content" name="work_content" class="form-textarea" rows="3"
+                placeholder="訪問以外の業務内容があれば記入してください"></textarea>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label" for="achievements">業務の成果・進捗</label>
+              <div class="input-hint">💡 例：○○社から見積承認の連絡あり、△△案件クロージング確定など</div>
+              <textarea id="achievements" name="achievements" class="form-textarea" rows="2"
+                placeholder="達成した成果や進捗状況を記入してください"></textarea>
+            </div>
+          </div>
+        </details>
+      </div>
+
+      <!-- 課題・その他（折りたたみ） -->
+      <div class="card">
+        <details>
+          <summary style="cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
+            <h2 class="card-title" style="margin: 0;">課題・その他</h2>
+            <span style="font-size: 0.8rem; color: var(--text-muted);">（クリックで展開）</span>
+          </summary>
+          <div style="padding-top: 1rem;">
+            <div class="form-group">
+              <label class="form-label" for="issues">課題・問題点</label>
+              <div class="input-hint">💡 例：納期遅延のリスクあり、競合の価格攻勢など</div>
+              <textarea id="issues" name="issues" class="form-textarea" rows="2"
+                placeholder="困っていることや課題があれば記入してください"></textarea>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label" for="consultation">上長への相談事項</label>
+              <div class="input-hint">💡 例：価格交渉の承認依頼、同行訪問のお願いなど</div>
+              <textarea id="consultation" name="consultation" class="form-textarea" rows="2"
+                placeholder="相談したいことがあれば記入してください"></textarea>
+            </div>
+          </div>
+        </details>
+      </div>
+
+      <!-- タスク管理 -->
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <h2 class="card-title" style="margin: 0;">タスク管理</h2>
+          <button type="button" class="btn btn-outline btn-sm" onclick="addTask()">＋ タスクを追加</button>
+        </div>
+        
+        <div id="tasks-container">
+          <!-- タスクは動的に追加 -->
+        </div>
+        
+        <div id="tasks-empty" class="empty-state">
+          <p>タスクがありません</p>
+          <button type="button" class="btn btn-outline btn-sm" onclick="addTask()">＋ タスクを追加</button>
+        </div>
+      </div>
+
+      <!-- ファイル添付 -->
+      <div class="card">
+        <h2 class="card-title">ファイル添付</h2>
+        <p class="text-muted" style="font-size: 0.875rem; margin-bottom: 1rem;">
+          出張報告書や資料などを添付できます（最大5ファイル、各10MBまで）
+        </p>
+        
+        <div class="form-group">
+          <input type="file" id="file-input" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.jpg,.jpeg,.png,.gif" 
+            style="display: none;" onchange="handleFileSelect(event)">
+          <button type="button" class="btn btn-outline" onclick="document.getElementById('file-input').click()">
+            📎 ファイルを選択
+          </button>
+        </div>
+        
+        <div id="file-list" class="file-list"></div>
+      </div>
+
+      <!-- 送信ボタン -->
+      <div class="card">
+        <div class="btn-group" style="justify-content: space-between; align-items: center;">
+          <span style="font-size: 0.8rem; color: #64748b;">下書きは自動保存されます</span>
+          <div style="display: flex; gap: 0.5rem;">
+            <button type="button" class="btn btn-outline" onclick="saveDraft()">下書き保存</button>
+            <button type="submit" class="btn btn-primary">保存して完了</button>
+          </div>
+        </div>
+      </div>
+    </form>
+  </main>
+
+  <!-- 訪問先選択モーダル -->
+  <div id="visit-target-modal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>訪問先を選択</h3>
+        <button type="button" class="modal-close" onclick="closeVisitTargetModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">訪問先種別</label>
+          <select id="visit-type-select" class="form-select" onchange="onVisitTypeChange()">
+            <option value="customer">得意先</option>
+            <option value="supplier">仕入先</option>
+          </select>
+        </div>
+        <div class="form-group" id="assigned-user-filter-group">
+          <label class="form-label">担当者で絞り込み</label>
+          <select id="assigned-user-filter" class="form-select" onchange="searchVisitTarget()">
+            <option value="">すべて表示</option>
+            <option value="mine">自分の担当のみ</option>
+          </select>
+        </div>
+        <input type="text" id="visit-target-search" class="form-input" placeholder="検索..." oninput="searchVisitTarget()">
+        <div id="visit-target-list" class="customer-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 前回訪問内容モーダル -->
+  <div id="last-visit-modal" class="modal hidden">
+    <div class="modal-content" style="max-width: 550px;">
+      <div class="modal-header" style="background: linear-gradient(135deg, #dbeafe, #e0e7ff);">
+        <h3 style="margin: 0; color: #1e40af;">📋 前回の訪問記録</h3>
+        <button type="button" class="modal-close" onclick="closeLastVisitModal()">&times;</button>
+      </div>
+      <div class="modal-body" id="last-visit-content">
+      </div>
+      <div class="modal-footer" style="display: flex; gap: 0.5rem; justify-content: flex-end; padding: 1rem; border-top: 1px solid #e2e8f0;">
+        <button type="button" class="btn btn-outline" onclick="closeLastVisitModal()">閉じる</button>
+        <button type="button" class="btn btn-primary" onclick="applyLastVisit()">📝 引用して入力</button>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    /* モーダル */
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .modal.hidden { display: none; }
+    .modal-content {
+      background: white;
+      border-radius: 0.5rem;
+      width: 90%;
+      max-width: 500px;
+      max-height: 90vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .modal-header h3 { margin: 0; }
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: var(--text-muted);
+    }
+    .modal-body {
+      padding: 1rem;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .customer-list {
+      margin-top: 1rem;
+      max-height: 400px;
+      overflow-y: auto;
+      border: 1px solid #e5e7eb;
+      border-radius: 0.375rem;
+    }
+    .customer-item {
+      padding: 0.75rem;
+      border: 1px solid var(--border-color);
+      border-radius: 0.375rem;
+      margin-bottom: 0.5rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .customer-item:hover {
+      background: var(--background-color);
+    }
+    .customer-item-name { font-weight: 600; }
+    .customer-item-code { font-size: 0.75rem; color: var(--text-muted); }
+
+    /* チェックボックス */
+    .checkbox-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 0.25rem 0.5rem;
+      background: var(--background-color);
+      border-radius: 0.25rem;
+      font-size: 0.875rem;
+      cursor: pointer;
+    }
+    .checkbox-label:hover {
+      background: var(--border-color);
+    }
+    .checkbox-label input {
+      margin: 0;
+    }
+
+    /* ファイルリスト */
+    .file-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .file-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.5rem 0.75rem;
+      background: var(--background-color);
+      border-radius: 0.375rem;
+    }
+    .file-item-info {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .file-item-name {
+      font-size: 0.875rem;
+    }
+    .file-item-size {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+    .file-item-remove {
+      background: none;
+      border: none;
+      color: var(--danger-color);
+      cursor: pointer;
+      font-size: 1.25rem;
+    }
+
+    /* 空状態 */
+    .empty-state {
+      text-align: center;
+      padding: 2rem 1rem;
+      color: var(--text-muted);
+      border: 2px dashed var(--border-color);
+      border-radius: 0.5rem;
+    }
+    .empty-state p {
+      margin: 0 0 1rem 0;
+      font-size: 0.875rem;
+    }
+    .empty-state.hidden { display: none; }
+
+    /* 入力ヒント */
+    .input-hint {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+      padding: 0.375rem 0.5rem;
+      background: #f0f9ff;
+      border-radius: 0.25rem;
+      border-left: 3px solid #3b82f6;
+    }
+
+    /* 訪問セクション */
+    .visit-section {
+      background: #f8fafc;
+      border: 1px solid var(--border-color);
+      border-radius: 0.5rem;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+    .visit-section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .visit-section-title {
+      font-weight: 600;
+      color: var(--primary-color);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .visit-type-badge {
+      font-size: 0.7rem;
+      padding: 0.2rem 0.5rem;
+      border-radius: 9999px;
+      background: var(--primary-color);
+      color: white;
+    }
+    .visit-type-badge.supplier {
+      background: #f59e0b;
+    }
+
+    /* タスクセクション */
+    .task-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem;
+      background: #f8fafc;
+      border: 1px solid var(--border-color);
+      border-radius: 0.375rem;
+      margin-bottom: 0.5rem;
+    }
+    .task-item input[type="checkbox"] {
+      width: 1.25rem;
+      height: 1.25rem;
+      flex-shrink: 0;
+    }
+    .task-item input[type="text"] {
+      flex: 1;
+      border: none;
+      background: transparent;
+      font-size: 0.9rem;
+      padding: 0.25rem 0;
+    }
+    .task-item input[type="text"]:focus {
+      outline: none;
+      background: white;
+      border-radius: 0.25rem;
+      padding: 0.25rem 0.5rem;
+      margin: -0.25rem -0.5rem;
+      box-shadow: 0 0 0 2px var(--primary-color);
+    }
+    .task-remove {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 0.25rem;
+      font-size: 1.25rem;
+      line-height: 1;
+      opacity: 0.5;
+      transition: opacity 0.2s;
+    }
+    .task-remove:hover {
+      opacity: 1;
+      color: var(--danger-color);
+    }
+  </style>
+
+  <script src="/js/common.js"></script>
+  <script>
+    // グローバル変数
+    let taskCount = 0;
+    let visitCount = 0;
+    let manufacturers = [];
+    let customers = [];
+    let suppliers = [];
+    let allUsers = [];
+    let currentVisitIndex = null;
+    let selectedFiles = [];
+
+    // ページ読み込み時
+    // フォーム送信イベント（後で設定）
+    function initFormEvents() {
+      document.getElementById('report-form').addEventListener('submit', submitReport);
+    }
+
+    // マスタデータ読み込み
+    async function loadMasterData() {
+      try {
+        const [mfrRes, custRes, suppRes, usersRes] = await Promise.all([
+          fetch('/api/manufacturers'),
+          fetch('/api/customers'),
+          fetch('/api/suppliers'),
+          fetch('/api/users/all')
+        ]);
+        manufacturers = await mfrRes.json();
+        customers = await custRes.json();
+        suppliers = await suppRes.json();
+        allUsers = await usersRes.json();
+      } catch (error) {
+        console.error('マスタデータ読み込みエラー:', error);
+      }
+    }
+
+    // タスク追加
+    function addTask(content = '', isCompleted = false, dueDate = '') {
+      taskCount++;
+      const container = document.getElementById('tasks-container');
+      const html = `
+        <div class="task-item" id="task-${taskCount}">
+          <input type="checkbox" class="task-completed" ${isCompleted ? 'checked' : ''}>
+          <input type="text" class="task-content" placeholder="タスク内容を入力..." value="${escapeHtml(content)}" style="flex: 1;">
+          <input type="date" class="task-due-date form-input" value="${dueDate}" style="width: 130px; padding: 0.25rem 0.5rem; font-size: 0.8rem;" title="期限">
+          <button type="button" class="task-remove" onclick="removeTask(${taskCount})">×</button>
+        </div>
+      `;
+      container.insertAdjacentHTML('beforeend', html);
+      updateEmptyStates();
+      
+      // 新規追加時はフォーカス
+      if (!content) {
+        document.querySelector(`#task-${taskCount} .task-content`).focus();
+      }
+    }
+
+    // タスク削除
+    function removeTask(id) {
+      const el = document.getElementById(`task-${id}`);
+      if (el) el.remove();
+      updateEmptyStates();
+    }
+
+    // 空状態の表示/非表示を更新
+    function updateEmptyStates() {
+      const tasksContainer = document.getElementById('tasks-container');
+      const tasksEmpty = document.getElementById('tasks-empty');
+      const visitsContainer = document.getElementById('visits-container');
+      const visitsEmpty = document.getElementById('visits-empty');
+
+      if (tasksContainer.children.length === 0) {
+        tasksEmpty.classList.remove('hidden');
+      } else {
+        tasksEmpty.classList.add('hidden');
+      }
+
+      if (visitsContainer.children.length === 0) {
+        visitsEmpty.classList.remove('hidden');
+      } else {
+        visitsEmpty.classList.add('hidden');
+      }
+    }
+
+    // 訪問記録追加
+    function addVisit(data = {}) {
+      visitCount++;
+      const container = document.getElementById('visits-container');
+      const div = document.createElement('div');
+      div.className = 'visit-section';
+      div.id = `visit-${visitCount}`;
+      
+      const visitType = data.visit_type || 'customer';
+      const visitTypeName = visitType === 'supplier' ? '仕入先' : '得意先';
+      const visitTypeBadgeClass = visitType === 'supplier' ? 'supplier' : '';
+      
+      // メーカーチェックボックス
+      const mfrCheckboxes = manufacturers.map(m => `
+        <label class="checkbox-label">
+          <input type="checkbox" class="visit-manufacturer" value="${m.id}" 
+            ${data.manufacturer_ids && data.manufacturer_ids.includes(m.id) ? 'checked' : ''}>
+          ${escapeHtml(m.name)}
+        </label>
+      `).join('');
+
+      div.innerHTML = `
+        <div class="visit-section-header">
+          <div class="visit-section-title">
+            <span class="visit-type-badge ${visitTypeBadgeClass}">${visitTypeName}</span>
+            <span class="visit-target-display">${escapeHtml(data.target_name || '訪問先を選択してください')}</span>
+          </div>
+          <button type="button" class="btn btn-outline btn-sm" style="color: var(--danger-color); border-color: var(--danger-color);" onclick="removeVisit(${visitCount})">削除</button>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">訪問先</label>
+          <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+            <select class="form-select visit-type" style="width: auto;" onchange="onVisitTypeChangeInline(${visitCount})">
+              <option value="customer" ${visitType !== 'supplier' ? 'selected' : ''}>得意先</option>
+              <option value="supplier" ${visitType === 'supplier' ? 'selected' : ''}>仕入先</option>
+            </select>
+            <input type="text" class="form-input visit-target-name" placeholder="クリックして選択" 
+              value="${escapeHtml(data.target_name || '')}" readonly style="flex: 1; min-width: 150px; cursor: pointer;" onclick="openVisitTargetModal(${visitCount})">
+            <input type="hidden" class="visit-customer-id" value="${data.customer_id || ''}">
+            <input type="hidden" class="visit-supplier-id" value="${data.supplier_id || ''}">
+            <button type="button" class="btn btn-primary btn-sm" onclick="openVisitTargetModal(${visitCount})">選択</button>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">訪問目的</label>
+            <select class="form-select visit-purpose">
+              <option value="">選択してください</option>
+              <option value="新規開拓" ${data.visit_purpose === '新規開拓' ? 'selected' : ''}>新規開拓</option>
+              <option value="既存フォロー" ${data.visit_purpose === '既存フォロー' ? 'selected' : ''}>既存フォロー</option>
+              <option value="見積提出" ${data.visit_purpose === '見積提出' ? 'selected' : ''}>見積提出</option>
+              <option value="商談" ${data.visit_purpose === '商談' ? 'selected' : ''}>商談</option>
+              <option value="納品" ${data.visit_purpose === '納品' ? 'selected' : ''}>納品</option>
+              <option value="クレーム対応" ${data.visit_purpose === 'クレーム対応' ? 'selected' : ''}>クレーム対応</option>
+              <option value="打ち合わせ" ${data.visit_purpose === '打ち合わせ' ? 'selected' : ''}>打ち合わせ</option>
+              <option value="情報交換" ${data.visit_purpose === '情報交換' ? 'selected' : ''}>情報交換</option>
+              <option value="その他" ${data.visit_purpose === 'その他' ? 'selected' : ''}>その他</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">同行者</label>
+          <div class="checkbox-group visit-companions">
+            ${allUsers.filter(u => u.id !== window.currentUserId).map(u => `
+              <label class="checkbox-label">
+                <input type="checkbox" class="visit-companion" value="${u.id}"
+                  ${data.companion_ids && data.companion_ids.includes(u.id) ? 'checked' : ''}>
+                ${escapeHtml(u.name)}
+              </label>
+            `).join('')}
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">商談内容</label>
+          <div class="input-hint">💡 例：担当者○○様と面談。△△製品の採用検討中、来週見積提出予定</div>
+          <textarea class="form-textarea visit-content" rows="5" placeholder="商談の内容を記入">${escapeHtml(data.meeting_content || '')}</textarea>
+        </div>
+      `;
+      container.appendChild(div);
+      updateEmptyStates();
+    }
+
+    // 訪問記録削除
+    function removeVisit(id) {
+      const el = document.getElementById(`visit-${id}`);
+      if (el) el.remove();
+      updateEmptyStates();
+    }
+
+    // 訪問先種別変更（インライン）
+    function onVisitTypeChangeInline(visitIndex) {
+      const section = document.getElementById(`visit-${visitIndex}`);
+      section.querySelector('.visit-target-name').value = '';
+      section.querySelector('.visit-customer-id').value = '';
+      section.querySelector('.visit-supplier-id').value = '';
+      
+      // バッジ更新
+      const visitType = section.querySelector('.visit-type').value;
+      const badge = section.querySelector('.visit-type-badge');
+      badge.textContent = visitType === 'supplier' ? '仕入先' : '得意先';
+      badge.className = 'visit-type-badge' + (visitType === 'supplier' ? ' supplier' : '');
+      
+      // 表示テキスト更新
+      section.querySelector('.visit-target-display').textContent = '訪問先を選択してください';
+    }
+
+    // 訪問先モーダル開く
+    function openVisitTargetModal(visitIndex) {
+      currentVisitIndex = visitIndex;
+      const section = document.getElementById(`visit-${visitIndex}`);
+      const visitType = section.querySelector('.visit-type').value;
+      
+      document.getElementById('visit-type-select').value = visitType;
+      document.getElementById('visit-target-search').value = '';
+      document.getElementById('assigned-user-filter').value = 'mine'; // デフォルトで自分の担当
+      
+      // 得意先の時のみ担当者フィルタを表示
+      const filterGroup = document.getElementById('assigned-user-filter-group');
+      filterGroup.style.display = visitType === 'customer' ? 'block' : 'none';
+      
+      document.getElementById('visit-target-modal').classList.remove('hidden');
+      
+      renderVisitTargetList(visitType);
+    }
+
+    // 訪問先モーダル閉じる
+    function closeVisitTargetModal() {
+      document.getElementById('visit-target-modal').classList.add('hidden');
+      currentVisitIndex = null;
+    }
+
+    // 訪問先種別変更（モーダル内）
+    function onVisitTypeChange() {
+      const visitType = document.getElementById('visit-type-select').value;
+      document.getElementById('visit-target-search').value = '';
+      
+      // 得意先の時のみ担当者フィルタを表示
+      const filterGroup = document.getElementById('assigned-user-filter-group');
+      filterGroup.style.display = visitType === 'customer' ? 'block' : 'none';
+      
+      renderVisitTargetList(visitType);
+    }
+
+    // 訪問先検索
+    function searchVisitTarget() {
+      const visitType = document.getElementById('visit-type-select').value;
+      const q = document.getElementById('visit-target-search').value.toLowerCase();
+      renderVisitTargetList(visitType, q);
+    }
+
+    // 訪問先リスト表示
+    function renderVisitTargetList(visitType, query = '') {
+      const container = document.getElementById('visit-target-list');
+      let items = visitType === 'supplier' ? suppliers : customers;
+      
+      // 担当者フィルタ（得意先のみ）
+      if (visitType === 'customer') {
+        const assignedFilter = document.getElementById('assigned-user-filter').value;
+        if (assignedFilter === 'mine') {
+          const currentUserId = window.currentUserId;
+          items = items.filter(item => item.assigned_user_id === currentUserId);
+        }
+      }
+      
+      // 検索フィルタ
+      if (query) {
+        items = items.filter(item => 
+          item.name.toLowerCase().includes(query) || 
+          (item.customer_code || item.supplier_code || '').toLowerCase().includes(query)
+        );
+      }
+
+      if (items.length === 0) {
+        container.innerHTML = '<div class="text-muted" style="padding: 1rem; text-align: center;">該当なし</div>';
+        return;
+      }
+
+      // 件数表示 + リスト（制限なし）
+      const countInfo = `<div style="padding: 0.5rem; font-size: 0.75rem; color: #64748b; border-bottom: 1px solid #e5e7eb;">${items.length}件</div>`;
+      
+      container.innerHTML = countInfo + items.map(item => {
+        const assignedName = item.assigned_user_name ? `<span style="font-size: 0.7rem; color: #3b82f6; margin-left: 0.5rem;">担当: ${escapeHtml(item.assigned_user_name)}</span>` : '';
+        return `
+          <div class="customer-item" style="display: flex; justify-content: space-between; align-items: center;">
+            <div onclick="selectVisitTarget('${visitType}', ${item.id}, '${escapeHtml(item.name)}')" style="flex: 1; cursor: pointer;">
+              <div class="customer-item-name">${escapeHtml(item.name)}${assignedName}</div>
+              <div class="customer-item-code">${item.customer_code || item.supplier_code || ''}</div>
+            </div>
+            <button type="button" class="btn btn-sm" style="padding: 0.25rem 0.5rem; background: none; border: none; font-size: 1.2rem;" 
+              onclick="event.stopPropagation(); addToFavorite('${visitType}', ${item.id})" title="お気に入りに追加">
+              ⭐
+            </button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // お気に入りに追加
+    async function addToFavorite(targetType, id) {
+      try {
+        const body = targetType === 'supplier' 
+          ? { target_type: 'supplier', supplier_id: id }
+          : { target_type: 'customer', customer_id: id };
+        
+        const res = await fetch('/api/favorites', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        
+        if (res.ok) {
+          alert('お気に入りに追加しました');
+        }
+      } catch (e) {
+        alert('お気に入り追加に失敗しました');
+      }
+    }
+
+    // 訪問先選択
+    async function selectVisitTarget(visitType, id, name) {
+      if (currentVisitIndex === null) return;
+      
+      const section = document.getElementById(`visit-${currentVisitIndex}`);
+      section.querySelector('.visit-type').value = visitType;
+      section.querySelector('.visit-target-name').value = name;
+      
+      if (visitType === 'supplier') {
+        section.querySelector('.visit-supplier-id').value = id;
+        section.querySelector('.visit-customer-id').value = '';
+      } else {
+        section.querySelector('.visit-customer-id').value = id;
+        section.querySelector('.visit-supplier-id').value = '';
+      }
+      
+      // ヘッダーの表示も更新
+      section.querySelector('.visit-target-display').textContent = name;
+      
+      closeVisitTargetModal();
+
+      // 前回訪問内容を取得してモーダル表示
+      try {
+        const params = visitType === 'supplier' 
+          ? `target_type=supplier&supplier_id=${id}`
+          : `target_type=customer&customer_id=${id}`;
+        const res = await fetch(`/api/last-visit?${params}`);
+        const lastVisit = await res.json();
+        
+        if (lastVisit && lastVisit.meeting_content) {
+          showLastVisitModal(lastVisit, currentVisitIndex);
+        }
+      } catch (e) {
+        console.log('前回訪問取得エラー:', e);
+      }
+    }
+
+    // 前回訪問内容モーダル表示
+    function showLastVisitModal(lastVisit, visitIndex) {
+      const modal = document.getElementById('last-visit-modal');
+      const content = document.getElementById('last-visit-content');
+      
+      content.innerHTML = `
+        <div style="background: #f8fafc; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+            <span style="font-weight: 600; color: #1e293b;">📅 ${lastVisit.report_date}</span>
+            <span style="color: #64748b; font-size: 0.875rem;">${lastVisit.visit_purpose || ''}</span>
+          </div>
+        </div>
+        <div style="margin-bottom: 1rem;">
+          <label style="font-weight: 600; color: #475569; font-size: 0.875rem;">商談内容</label>
+          <div style="background: white; border: 1px solid #e2e8f0; padding: 1rem; border-radius: 0.5rem; margin-top: 0.25rem; white-space: pre-wrap; max-height: 200px; overflow-y: auto;">
+            ${escapeHtml(lastVisit.meeting_content || '')}
+          </div>
+        </div>
+        ${lastVisit.next_action ? `
+        <div style="margin-bottom: 1rem;">
+          <label style="font-weight: 600; color: #475569; font-size: 0.875rem;">次回アクション</label>
+          <div style="background: #fef3c7; border: 1px solid #fcd34d; padding: 0.75rem; border-radius: 0.5rem; margin-top: 0.25rem;">
+            ${escapeHtml(lastVisit.next_action)}
+            ${lastVisit.next_action_date ? `<span style="color: #92400e; margin-left: 0.5rem;">(${lastVisit.next_action_date})</span>` : ''}
+          </div>
+        </div>
+        ` : ''}
+      `;
+      
+      modal.dataset.visitIndex = visitIndex;
+      modal.dataset.lastVisit = JSON.stringify(lastVisit);
+      modal.classList.remove('hidden');
+    }
+
+    function closeLastVisitModal() {
+      document.getElementById('last-visit-modal').classList.add('hidden');
+    }
+
+    function applyLastVisit() {
+      const modal = document.getElementById('last-visit-modal');
+      const visitIndex = modal.dataset.visitIndex;
+      const lastVisit = JSON.parse(modal.dataset.lastVisit);
+      const section = document.getElementById(`visit-${visitIndex}`);
+      
+      section.querySelector('.visit-content').value = `【前回(${lastVisit.report_date})の続き】\n${lastVisit.meeting_content || ''}`;
+      if (lastVisit.next_action) {
+        section.querySelector('.visit-next-action').value = lastVisit.next_action;
+      }
+      
+      closeLastVisitModal();
+    }
+
+    // 訪問先クリア
+    function clearVisitTarget(visitIndex) {
+      const section = document.getElementById(`visit-${visitIndex}`);
+      section.querySelector('.visit-target-name').value = '';
+      section.querySelector('.visit-customer-id').value = '';
+      section.querySelector('.visit-supplier-id').value = '';
+      section.querySelector('.visit-target-display').textContent = '訪問先を選択してください';
+    }
+
+    // フォームデータ収集
+    function collectFormData() {
+      // タスク収集
+      const tasks = [];
+      document.querySelectorAll('#tasks-container .task-item').forEach(el => {
+        const content = el.querySelector('.task-content').value.trim();
+        if (content) {
+          tasks.push({
+            content: content,
+            is_completed: el.querySelector('.task-completed').checked,
+            due_date: el.querySelector('.task-due-date').value || null
+          });
+        }
+      });
+
+      // 訪問記録収集
+      const visits = [];
+      document.querySelectorAll('#visits-container .visit-section').forEach(el => {
+        const visitType = el.querySelector('.visit-type').value;
+        const customerId = el.querySelector('.visit-customer-id').value;
+        const supplierId = el.querySelector('.visit-supplier-id').value;
+        const targetName = el.querySelector('.visit-target-name').value;
+        const content = el.querySelector('.visit-content').value.trim();
+        
+        // 何か入力があれば追加
+        if (customerId || supplierId || targetName || content) {
+          const manufacturerIds = [];
+          el.querySelectorAll('.visit-manufacturer:checked').forEach(cb => {
+            manufacturerIds.push(parseInt(cb.value));
+          });
+
+          visits.push({
+            visit_type: visitType,
+            customer_id: customerId ? parseInt(customerId) : null,
+            supplier_id: supplierId ? parseInt(supplierId) : null,
+            customer_name_manual: (!customerId && !supplierId) ? targetName : null,
+            visit_purpose: el.querySelector('.visit-purpose')?.value || '',
+            meeting_content: content,
+            probability: el.querySelector('.visit-probability')?.value || null,
+            manufacturer_ids: manufacturerIds
+          });
+        }
+      });
+
+      return {
+        report_date: document.getElementById('report_date').value,
+        work_style: document.getElementById('work_style').value,
+        work_content: document.getElementById('work_content').value,
+        achievements: document.getElementById('achievements').value,
+        issues: document.getElementById('issues').value,
+        consultation: document.getElementById('consultation').value,
+        tasks: tasks,
+        visits: visits
+      };
+    }
+
+    // ファイル選択処理
+    function handleFileSelect(event) {
+      const files = Array.from(event.target.files);
+      
+      for (const file of files) {
+        if (selectedFiles.length >= 5) {
+          alert('ファイルは最大5件までです');
+          break;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+          alert(`${file.name} は10MBを超えています`);
+          continue;
+        }
+        selectedFiles.push(file);
+      }
+      
+      renderFileList();
+      event.target.value = ''; // リセット
+    }
+
+    // ファイルリスト表示
+    function renderFileList() {
+      const container = document.getElementById('file-list');
+      if (selectedFiles.length === 0) {
+        container.innerHTML = '';
+        return;
+      }
+
+      container.innerHTML = selectedFiles.map((file, index) => `
+        <div class="file-item">
+          <div class="file-item-info">
+            <span>📄</span>
+            <span class="file-item-name">${escapeHtml(file.name)}</span>
+            <span class="file-item-size">(${formatFileSize(file.size)})</span>
+          </div>
+          <button type="button" class="file-item-remove" onclick="removeFile(${index})">×</button>
+        </div>
+      `).join('');
+    }
+
+    // ファイル削除
+    function removeFile(index) {
+      selectedFiles.splice(index, 1);
+      renderFileList();
+    }
+
+    // ファイルサイズフォーマット
+    function formatFileSize(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+
+    // ファイルアップロード
+    async function uploadFiles(reportId) {
+      if (selectedFiles.length === 0) return;
+
+      const formData = new FormData();
+      for (const file of selectedFiles) {
+        formData.append('files', file);
+      }
+
+      try {
+        const res = await fetch(`/api/reports/${reportId}/attachments`, {
+          method: 'POST',
+          body: formData
+        });
+        if (!res.ok) {
+          console.error('ファイルアップロード失敗');
+        }
+      } catch (error) {
+        console.error('ファイルアップロードエラー:', error);
+      }
+    }
+
+    // 下書き保存
+    async function saveDraft() {
+      const data = collectFormData();
+      data.status = 'draft';
+
+      try {
+        const res = await fetch('/api/reports', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        if (res.ok) {
+          const result = await res.json();
+          // ファイルアップロード
+          await uploadFiles(result.id);
+          alert('下書きを保存しました');
+          window.location.href = `/report-detail.html?id=${result.id}`;
+        } else {
+          const err = await res.json();
+          alert('保存に失敗しました: ' + err.error);
+        }
+      } catch (error) {
+        alert('通信エラーが発生しました');
+        console.error(error);
+      }
+    }
+
+    // 提出
+    async function submitReport(e) {
+      e.preventDefault();
+
+      if (!confirm('日報を提出しますか？')) return;
+
+      const data = collectFormData();
+      data.status = 'submitted';
+
+      try {
+        const res = await fetch('/api/reports', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        if (res.ok) {
+          const result = await res.json();
+          // ファイルアップロード
+          await uploadFiles(result.id);
+          // 自動保存データをクリア
+          localStorage.removeItem('report_autosave');
+          alert('日報を提出しました');
+          window.location.href = `/report-detail.html?id=${result.id}`;
+        } else {
+          const err = await res.json();
+          alert('提出に失敗しました: ' + err.error);
+        }
+      } catch (error) {
+        alert('通信エラーが発生しました');
+        console.error(error);
+      }
+    }
+
+    // ============================================
+    // 自動保存機能
+    // ============================================
+    let autoSaveTimer = null;
+
+    function setupAutoSave() {
+      const form = document.getElementById('report-form');
+      form.addEventListener('input', () => {
+        clearTimeout(autoSaveTimer);
+        autoSaveTimer = setTimeout(autoSave, 3000);
+      });
+
+      // 復元確認
+      const saved = localStorage.getItem('report_autosave');
+      if (saved) {
+        const data = JSON.parse(saved);
+        const savedDate = new Date(data.savedAt).toLocaleString();
+        if (confirm(`自動保存されたデータがあります（${savedDate}）。復元しますか？`)) {
+          restoreAutoSave(data);
+        } else {
+          localStorage.removeItem('report_autosave');
+        }
+      }
+    }
+
+    function autoSave() {
+      const data = collectFormData();
+      data.savedAt = new Date().toISOString();
+      localStorage.setItem('report_autosave', JSON.stringify(data));
+      
+      const status = document.getElementById('autosave-status');
+      status.textContent = `✓ 自動保存 ${new Date().toLocaleTimeString()}`;
+      setTimeout(() => status.textContent = '', 3000);
+    }
+
+    function restoreAutoSave(data) {
+      if (data.report_date) document.getElementById('report_date').value = data.report_date;
+      if (data.work_style) document.getElementById('work_style').value = data.work_style;
+      if (data.work_content) document.getElementById('work_content').value = data.work_content;
+      if (data.achievements) document.getElementById('achievements').value = data.achievements;
+      if (data.issues) document.getElementById('issues').value = data.issues;
+      if (data.consultation) document.getElementById('consultation').value = data.consultation;
+
+      if (data.tasks) {
+        data.tasks.forEach(t => addTask(t.content, t.is_completed));
+      }
+      if (data.visits) {
+        data.visits.forEach(v => addVisit(v));
+      }
+    }
+
+    // ============================================
+    // 前日コピー機能
+    // ============================================
+    async function copyFromPrevious() {
+      const reportDate = document.getElementById('report_date').value || getTodayString();
+      
+      try {
+        const res = await fetch(`/api/reports/copy/latest?before_date=${reportDate}`);
+        if (!res.ok) {
+          alert('コピー元の日報が見つかりません');
+          return;
+        }
+
+        const data = await res.json();
+        
+        if (!confirm(`${data.report_date} の日報からコピーします。現在の入力内容は上書きされます。よろしいですか？`)) {
+          return;
+        }
+
+        // フォームにセット
+        document.getElementById('work_style').value = data.work_style || '';
+        document.getElementById('work_content').value = data.work_content || '';
+        document.getElementById('achievements').value = data.achievements || '';
+        document.getElementById('issues').value = data.issues || '';
+        document.getElementById('consultation').value = data.consultation || '';
+
+        // タスククリア＆コピー
+        document.getElementById('tasks-container').innerHTML = '';
+        taskCount = 0;
+        if (data.tasks) {
+          data.tasks.forEach(t => addTask(t.content, false)); // 完了状態はリセット
+        }
+
+        // 訪問記録クリア＆コピー
+        document.getElementById('visits-container').innerHTML = '';
+        visitCount = 0;
+        if (data.visits) {
+          data.visits.forEach(v => addVisit({
+            visit_type: v.visit_type,
+            customer_id: v.customer_id,
+            supplier_id: v.supplier_id,
+            customer_name: v.customer_name || v.supplier_name || v.customer_name_manual,
+            visit_purpose: v.visit_purpose,
+            meeting_content: '', // 商談内容はクリア
+            deal_amount: v.deal_amount,
+            probability: v.probability,
+            next_action: '',
+            next_action_date: null,
+            manufacturer_ids: v.manufacturers ? v.manufacturers.map(m => m.id) : [],
+            companion_ids: v.companions ? v.companions.map(c => c.id) : []
+          }));
+        }
+
+        alert('前日の日報をコピーしました');
+      } catch (error) {
+        console.error('コピーエラー:', error);
+        alert('コピーに失敗しました');
+      }
+    }
+
+    // ============================================
+    // テンプレート機能
+    // ============================================
+    async function showTemplates() {
+      try {
+        const res = await fetch('/api/templates');
+        const templates = await res.json();
+
+        if (templates.length === 0) {
+          if (confirm('テンプレートがありません。テンプレート管理画面を開きますか？')) {
+            window.open('/templates.html', '_blank');
+          }
+          return;
+        }
+
+        // モーダル作成
+        let modalHtml = `
+          <div id="templates-modal" class="modal">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h3>📝 テンプレートを選択</h3>
+                <button type="button" class="modal-close" onclick="closeTemplatesModal()">&times;</button>
+              </div>
+              <div class="modal-body">
+                <div class="customer-list">
+                  ${templates.map(t => `
+                    <div class="customer-item" onclick="selectTemplate(${t.id})" style="cursor: pointer;">
+                      <div class="customer-item-name">${escapeHtml(t.name)}</div>
+                      <div class="customer-item-code" style="font-size: 0.75rem; color: #64748b; margin-top: 0.25rem;">
+                        ${t.is_shared ? '🌐 共有' : '👤 個人'}
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+                <div style="margin-top: 1rem; text-align: center;">
+                  <a href="/templates.html" target="_blank" style="font-size: 0.8rem; color: #64748b;">テンプレートを管理 →</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+        
+        // 既存モーダルを削除
+        const existingModal = document.getElementById('templates-modal');
+        if (existingModal) existingModal.remove();
+        
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        
+        // テンプレートデータを保存
+        window.loadedTemplates = templates;
+      } catch (error) {
+        console.error('テンプレートエラー:', error);
+        alert('テンプレートの読み込みに失敗しました');
+      }
+    }
+
+    function closeTemplatesModal() {
+      const modal = document.getElementById('templates-modal');
+      if (modal) modal.remove();
+    }
+
+    function selectTemplate(templateId) {
+      const template = window.loadedTemplates?.find(t => t.id === templateId);
+      if (template) {
+        applyTemplate(template);
+        closeTemplatesModal();
+      }
+    }
+
+    function applyTemplate(template) {
+      // テンプレート名から勤務形態を自動設定
+      const templateName = template.name || '';
+      if (templateName.includes('外出') || templateName.includes('訪問')) {
+        document.getElementById('work_style').value = 'field';
+      } else if (templateName.includes('内勤') || templateName.includes('オフィス')) {
+        document.getElementById('work_style').value = 'office';
+      } else if (templateName.includes('テレワーク') || templateName.includes('在宅') || templateName.includes('リモート')) {
+        document.getElementById('work_style').value = 'remote';
+      }
+      
+      if (template.work_content) {
+        const current = document.getElementById('work_content').value;
+        document.getElementById('work_content').value = current ? current + '\n' + template.work_content : template.work_content;
+      }
+      if (template.achievements) {
+        const current = document.getElementById('achievements').value;
+        document.getElementById('achievements').value = current ? current + '\n' + template.achievements : template.achievements;
+      }
+      if (template.issues) {
+        const current = document.getElementById('issues').value;
+        document.getElementById('issues').value = current ? current + '\n' + template.issues : template.issues;
+      }
+      if (template.consultation) {
+        const current = document.getElementById('consultation').value;
+        document.getElementById('consultation').value = current ? current + '\n' + template.consultation : template.consultation;
+      }
+      alert(`テンプレート「${template.name}」を適用しました`);
+    }
+
+    // ============================================
+    // お気に入り顧客機能
+    // ============================================
+    async function showFavorites() {
+      try {
+        const res = await fetch('/api/favorites');
+        const favorites = await res.json();
+
+        if (favorites.length === 0) {
+          alert('お気に入り顧客がありません。\n訪問先選択画面で⭐ボタンをクリックして登録できます。');
+          return;
+        }
+
+        // モーダル作成
+        let modalHtml = `
+          <div id="favorites-modal" class="modal">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h3>⭐ お気に入りから追加</h3>
+                <button type="button" class="modal-close" onclick="closeFavoritesModal()">&times;</button>
+              </div>
+              <div class="modal-body">
+                <div class="customer-list">
+                  ${favorites.map(f => {
+                    const name = f.target_type === 'supplier' ? f.supplier_name : f.customer_name;
+                    const code = f.target_type === 'supplier' ? f.supplier_code : f.customer_code;
+                    const typeLabel = f.target_type === 'supplier' ? '仕入先' : '得意先';
+                    const typeClass = f.target_type === 'supplier' ? 'supplier' : 'customer';
+                    return `
+                      <div class="customer-item" style="display: flex; justify-content: space-between; align-items: center;">
+                        <div onclick="addFromFavorite('${f.target_type}', ${f.customer_id || 'null'}, ${f.supplier_id || 'null'}, '${escapeHtml(name)}')" style="flex: 1; cursor: pointer;">
+                          <div class="customer-item-name">
+                            <span class="visit-type-badge ${typeClass}" style="font-size: 0.65rem; margin-right: 0.5rem;">${typeLabel}</span>
+                            ${escapeHtml(name)}
+                          </div>
+                          <div class="customer-item-code">${code || ''}</div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline" style="padding: 0.25rem 0.5rem; color: var(--danger-color);" 
+                          onclick="event.stopPropagation(); removeFavorite(${f.id})" title="削除">×</button>
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+        
+        // 既存モーダルを削除
+        const existingModal = document.getElementById('favorites-modal');
+        if (existingModal) existingModal.remove();
+        
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+      } catch (error) {
+        console.error('お気に入りエラー:', error);
+        alert('お気に入りの読み込みに失敗しました');
+      }
+    }
+
+    function closeFavoritesModal() {
+      const modal = document.getElementById('favorites-modal');
+      if (modal) modal.remove();
+    }
+
+    function addFromFavorite(targetType, customerId, supplierId, name) {
+      addVisit({
+        visit_type: targetType,
+        customer_id: targetType === 'customer' ? customerId : null,
+        supplier_id: targetType === 'supplier' ? supplierId : null,
+        customer_name: name
+      });
+      closeFavoritesModal();
+    }
+
+    async function removeFavorite(favId) {
+      if (!confirm('このお気に入りを削除しますか？')) return;
+      
+      try {
+        await fetch(`/api/favorites/${favId}`, { method: 'DELETE' });
+        showFavorites(); // 再読み込み
+      } catch (e) {
+        alert('削除に失敗しました');
+      }
+    }
+
+    // URLパラメータ対応
+    async function handleUrlParams() {
+      const params = new URLSearchParams(window.location.search);
+      
+      // 日付指定
+      const date = params.get('date');
+      if (date) {
+        document.getElementById('report_date').value = date;
+      }
+
+      // モード指定
+      const mode = params.get('mode');
+      if (mode === 'office') {
+        // 内勤モード
+        document.getElementById('work_style').value = 'office';
+        // 訪問セクションを折りたたむ
+        const visitSection = document.getElementById('visit-section');
+        if (visitSection) {
+          visitSection.querySelector('.empty-state').innerHTML = `
+            <p style="color: #94a3b8;">訪問がある場合は追加してください</p>
+            <button type="button" class="btn btn-outline btn-sm" onclick="addVisit()">＋ 訪問を追加</button>
+          `;
+        }
+      } else if (mode === 'outside') {
+        // 外出・訪問モード
+        document.getElementById('work_style').value = 'outside';
+        // 訪問入力欄は自動追加しない（AIで生成時に追加されるため）
+      }
+
+      // テンプレート指定
+      const templateId = params.get('template');
+      if (templateId) {
+        try {
+          const res = await fetch('/api/templates');
+          const templates = await res.json();
+          const template = templates.find(t => t.id === parseInt(templateId));
+          if (template) {
+            applyTemplate(template);
+          }
+        } catch (error) {
+          console.error('テンプレート適用エラー:', error);
+        }
+      }
+    }
+
+    // 初期化時に追加
+    document.addEventListener('DOMContentLoaded', async () => {
+      const user = await checkAuth();
+      if (!user) return;
+
+      // 現在のユーザーIDを保存（担当者フィルタ用）
+      window.currentUserId = user.id;
+
+      // 日付初期化
+      document.getElementById('report_date').value = getTodayString();
+
+      // マスタデータ読み込み
+      await loadMasterData();
+
+      // フォーム送信イベント
+      initFormEvents();
+
+      // 自動保存セットアップ
+      setupAutoSave();
+
+      // URLパラメータ処理
+      await handleUrlParams();
+
+      // 空状態を更新
+      updateEmptyStates();
+
+      // AI機能の状態チェック
+      await checkAiStatus();
+    });
+
+    // AI機能が有効かチェック
+    async function checkAiStatus() {
+      try {
+        const res = await fetch('/api/ai/status');
+        const data = await res.json();
+        if (data.enabled) {
+          document.getElementById('ai-generate-btn').style.display = 'inline-flex';
+        }
+      } catch (e) {
+        console.log('AI機能チェック:', e);
+      }
+    }
+
+    // AIメモ入力エリア表示
+    function showAiMemoInput() {
+      document.getElementById('ai-memo-section').style.display = 'block';
+      document.getElementById('ai-memo-input').focus();
+    }
+
+    // AIメモ入力エリア非表示
+    function hideAiMemoInput() {
+      document.getElementById('ai-memo-section').style.display = 'none';
+      document.getElementById('ai-memo-input').value = '';
+    }
+
+    // メモからAI生成
+    async function generateFromMemo() {
+      const memo = document.getElementById('ai-memo-input').value.trim();
+      if (!memo) {
+        alert('メモを入力してください');
+        return;
+      }
+
+      // 訪問情報を収集
+      const visits = [];
+      document.querySelectorAll('[id^="visit-"]').forEach(section => {
+        const targetName = section.querySelector('.visit-target-name')?.textContent || '';
+        const visitMemo = section.querySelector('.visit-summary')?.value || '';
+        if (targetName || visitMemo) {
+          visits.push({ target_name: targetName, memo: visitMemo });
+        }
+      });
+
+      // 生成中表示
+      document.getElementById('ai-generating').style.display = 'block';
+
+      try {
+        const res = await fetch('/api/ai/generate-report', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ memo, visits })
+        });
+
+        console.log('API応答ステータス:', res.status);
+        const data = await res.json();
+        console.log('API応答データ:', data);
+
+        if (res.ok) {
+          // メモ入力エリアを閉じる
+          hideAiMemoInput();
+          
+          // 訪問先が抽出された場合はモーダル表示
+          if (data.extracted_visits && data.extracted_visits.length > 0) {
+            console.log('モーダル表示開始:', data.extracted_visits);
+            showAiVisitsModal(data.extracted_visits);
+          } else {
+            alert('訪問先が見つかりませんでした。\n\n入力例：\n・滝沢電機　新規案件ヒアリング\n・アジア電気　定期訪問\n\n会社名がわかるように記載してください。');
+          }
+        } else {
+          console.error('AI生成エラー:', data);
+          alert('生成エラー: ' + (data.error || '不明なエラー'));
+        }
+      } catch (error) {
+        console.error('AI生成例外:', error);
+        console.error('エラースタック:', error.stack);
+        alert('生成に失敗しました: ' + error.message);
+      } finally {
+        document.getElementById('ai-generating').style.display = 'none';
+      }
+    }
+
+    // AI抽出訪問先データを保持
+    let extractedVisitsData = [];
+
+    // AI訪問先選択モーダル表示
+    function showAiVisitsModal(visits) {
+      extractedVisitsData = visits;
+      const listDiv = document.getElementById('ai-visits-list');
+      
+      let html = '';
+      visits.forEach((visit, index) => {
+        const hasMatches = visit.customer_matches.length > 0 || visit.supplier_matches.length > 0;
+        
+        // 自動選択ロジック: 候補が1件なら自動選択、完全一致も自動選択
+        let autoSelectedValue = '';
+        if (visit.customer_matches.length === 1 && visit.supplier_matches.length === 0) {
+          autoSelectedValue = `customer:${visit.customer_matches[0].id}`;
+        } else if (visit.supplier_matches.length === 1 && visit.customer_matches.length === 0) {
+          autoSelectedValue = `supplier:${visit.supplier_matches[0].id}`;
+        } else {
+          // 完全一致を探す
+          const exactCustomer = visit.customer_matches.find(c => c.exactMatch);
+          const exactSupplier = visit.supplier_matches.find(s => s.exactMatch);
+          if (exactCustomer) {
+            autoSelectedValue = `customer:${exactCustomer.id}`;
+          } else if (exactSupplier) {
+            autoSelectedValue = `supplier:${exactSupplier.id}`;
+          }
+        }
+        
+        // 同行者情報を表示
+        const companionInfo = visit.companion_matches && visit.companion_matches.length > 0
+          ? `<div style="font-size: 0.8rem; color: #059669; margin-bottom: 0.5rem; padding-left: 1.5rem;">👥 同行者: ${visit.companion_matches.map(c => c.name).join(', ')}</div>`
+          : '';
+        
+        html += `
+          <div class="ai-visit-item" style="border: 1px solid #e2e8f0; border-radius: 0.5rem; padding: 1rem; margin-bottom: 1rem;">
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
+              <input type="checkbox" id="ai-visit-check-${index}" checked>
+              <strong style="color: #1e293b;">${escapeHtml(visit.original_name)}</strong>
+            </div>
+            <div style="font-size: 0.85rem; color: #64748b; margin-bottom: 0.75rem; padding-left: 1.5rem;">
+              ${escapeHtml(visit.memo) || '（メモなし）'}
+            </div>
+            ${companionInfo}
+            <div style="padding-left: 1.5rem;">
+              <label style="font-size: 0.8rem; color: #64748b;">マスターと紐づけ:</label>
+              <select id="ai-visit-select-${index}" class="form-select" style="margin-top: 0.25rem;" onchange="toggleNewCustomerOption(${index})">
+                <option value="">-- 紐づけしない --</option>
+                ${visit.customer_matches.length > 0 ? `<optgroup label="顧客">
+                  ${visit.customer_matches.map(c => `<option value="customer:${c.id}" ${autoSelectedValue === 'customer:' + c.id ? 'selected' : ''}>${escapeHtml(c.name)}${c.customer_code ? ` (${c.customer_code})` : ''}</option>`).join('')}
+                </optgroup>` : ''}
+                ${visit.supplier_matches.length > 0 ? `<optgroup label="仕入先">
+                  ${visit.supplier_matches.map(s => `<option value="supplier:${s.id}" ${autoSelectedValue === 'supplier:' + s.id ? 'selected' : ''}>${escapeHtml(s.name)}${s.supplier_code ? ` (${s.supplier_code})` : ''}</option>`).join('')}
+                </optgroup>` : ''}
+              </select>
+              <div id="ai-visit-new-option-${index}" style="margin-top: 0.5rem; ${hasMatches || autoSelectedValue ? 'display: none;' : ''}">
+                <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: #1e293b; cursor: pointer;">
+                  <input type="checkbox" id="ai-visit-register-${index}" checked>
+                  <span>📝 顧客マスターに新規登録する</span>
+                </label>
+                <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.25rem; padding-left: 1.5rem;">
+                  ※ 登録後、管理者に通知されます
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+      
+      listDiv.innerHTML = html;
+      document.getElementById('ai-visits-modal').style.display = 'flex';
+    }
+
+    // 新規登録オプションの表示切り替え
+    function toggleNewCustomerOption(index) {
+      const select = document.getElementById(`ai-visit-select-${index}`);
+      const newOption = document.getElementById(`ai-visit-new-option-${index}`);
+      if (select.value === '') {
+        newOption.style.display = 'block';
+      } else {
+        newOption.style.display = 'none';
+      }
+    }
+
+    // AI訪問先モーダルを閉じる
+    function closeAiVisitsModal() {
+      document.getElementById('ai-visits-modal').style.display = 'none';
+      extractedVisitsData = [];
+    }
+
+    // AI訪問先を適用
+    async function applyAiVisits() {
+      let addedCount = 0;
+      let newCustomerCount = 0;
+      const newCustomers = [];
+      
+      for (let index = 0; index < extractedVisitsData.length; index++) {
+        const visit = extractedVisitsData[index];
+        const checkbox = document.getElementById(`ai-visit-check-${index}`);
+        const select = document.getElementById(`ai-visit-select-${index}`);
+        const registerCheckbox = document.getElementById(`ai-visit-register-${index}`);
+        
+        if (!checkbox.checked) continue;
+        
+        const selectedValue = select.value;
+        let targetType = 'customer';
+        let targetId = null;
+        let targetName = visit.original_name;
+        
+        if (selectedValue) {
+          // 既存マスターを選択した場合
+          const [type, id] = selectedValue.split(':');
+          targetType = type;
+          targetId = parseInt(id);
+          
+          if (type === 'customer') {
+            const match = visit.customer_matches.find(c => c.id === targetId);
+            if (match) targetName = match.name;
+          } else {
+            const match = visit.supplier_matches.find(s => s.id === targetId);
+            if (match) targetName = match.name;
+          }
+        } else if (registerCheckbox && registerCheckbox.checked) {
+          // 新規顧客として登録
+          try {
+            const res = await fetch('/api/ai/register-new-customer', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ name: visit.original_name })
+            });
+            const data = await res.json();
+            if (res.ok && data.customer_id) {
+              targetId = data.customer_id;
+              newCustomerCount++;
+              newCustomers.push(visit.original_name);
+            }
+          } catch (error) {
+            console.error('新規顧客登録エラー:', error);
+          }
+        }
+        
+        // 同行者IDを収集
+        const companionIds = [];
+        if (visit.companion_matches && visit.companion_matches.length > 0) {
+          for (const companion of visit.companion_matches) {
+            companionIds.push(companion.id);
+          }
+        }
+        
+        // 訪問を追加
+        addVisitFromAi(targetType, targetId, targetName, visit.memo, companionIds);
+        addedCount++;
+      }
+      
+      closeAiVisitsModal();
+      
+      if (addedCount > 0) {
+        let message = `✨ ${addedCount}件の訪問記録を追加しました。`;
+        if (newCustomerCount > 0) {
+          message += `\n\n📝 ${newCustomerCount}件の新規顧客を登録しました。\n（${newCustomers.join('、')}）\n※ 管理者に通知されました`;
+        }
+        message += '\n\n内容を確認・修正してください。';
+        alert(message);
+        // 訪問記録セクションにスクロール
+        document.getElementById('visits-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+
+    // AIから訪問を追加（既存のaddVisit形式に合わせる）
+    function addVisitFromAi(targetType, targetId, targetName, memo, companionIds = []) {
+      // addVisit関数を使って訪問を追加し、データをセット
+      addVisit({
+        target_name: targetName,
+        customer_id: targetType === 'customer' ? targetId : null,
+        supplier_id: targetType === 'supplier' ? targetId : null,
+        visit_type: targetType,
+        meeting_content: memo || '',
+        companion_ids: companionIds
+      });
+    }
+  </script>
+</body>
+</html>

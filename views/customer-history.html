@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>顧客カルテ - 営業日報システム</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .search-section {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      align-items: flex-end;
+    }
+    .target-info {
+      background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+      color: white;
+      padding: 1.5rem;
+      border-radius: 0.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .target-info.supplier {
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    }
+    .target-name {
+      font-size: 1.5rem;
+      font-weight: bold;
+      margin-bottom: 0.5rem;
+    }
+    .target-detail {
+      font-size: 0.875rem;
+      opacity: 0.9;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+    .stat-item {
+      background: rgba(255,255,255,0.15);
+      padding: 0.75rem;
+      border-radius: 0.375rem;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 1.25rem;
+      font-weight: bold;
+    }
+    .stat-label {
+      font-size: 0.7rem;
+      opacity: 0.8;
+    }
+    
+    /* カルテセクション */
+    .karte-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .karte-card {
+      background: white;
+      border: 1px solid var(--border-color);
+      border-radius: 0.5rem;
+      padding: 1rem;
+    }
+    .karte-card h4 {
+      margin: 0 0 0.75rem 0;
+      font-size: 0.9rem;
+      color: #475569;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    /* 担当者リスト */
+    .rep-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .rep-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.5rem;
+      background: #f8fafc;
+      border-radius: 0.25rem;
+    }
+    .rep-name {
+      font-weight: 500;
+    }
+    .rep-dept {
+      font-size: 0.75rem;
+      color: #64748b;
+    }
+    .rep-stats {
+      text-align: right;
+      font-size: 0.75rem;
+      color: #64748b;
+    }
+    .rep-count {
+      font-weight: 600;
+      color: #3b82f6;
+    }
+    
+    /* メーカータグ */
+    .mfr-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .mfr-tag {
+      padding: 0.25rem 0.75rem;
+      background: #e0e7ff;
+      color: #3730a3;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    .mfr-count {
+      background: #c7d2fe;
+      padding: 0.125rem 0.375rem;
+      border-radius: 9999px;
+      font-size: 0.7rem;
+    }
+    
+    /* 訪問グラフ */
+    .visit-chart {
+      display: flex;
+      align-items: flex-end;
+      gap: 0.25rem;
+      height: 80px;
+      padding-top: 0.5rem;
+    }
+    .chart-bar-wrapper {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    .chart-bar {
+      width: 100%;
+      background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+      border-radius: 0.25rem 0.25rem 0 0;
+      min-height: 4px;
+      transition: height 0.3s;
+    }
+    .chart-label {
+      font-size: 0.6rem;
+      color: #94a3b8;
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      transform: rotate(180deg);
+    }
+    .chart-value {
+      font-size: 0.65rem;
+      color: #64748b;
+      font-weight: 500;
+    }
+    
+    /* 訪問目的 */
+    .purpose-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .purpose-item {
+      padding: 0.25rem 0.75rem;
+      background: #f1f5f9;
+      border-radius: 0.25rem;
+      font-size: 0.8rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .purpose-count {
+      background: #e2e8f0;
+      padding: 0.125rem 0.5rem;
+      border-radius: 9999px;
+      font-weight: 600;
+      color: #475569;
+    }
+    
+    /* タイムライン */
+    .timeline {
+      position: relative;
+      padding-left: 2rem;
+    }
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 0.5rem;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: var(--border-color);
+    }
+    .timeline-item {
+      position: relative;
+      padding-bottom: 1.5rem;
+    }
+    .timeline-item::before {
+      content: '';
+      position: absolute;
+      left: -1.5rem;
+      top: 0.25rem;
+      width: 10px;
+      height: 10px;
+      background: var(--primary-color);
+      border-radius: 50%;
+      border: 2px solid white;
+      box-shadow: 0 0 0 2px var(--primary-color);
+    }
+    .timeline-date {
+      font-weight: 600;
+      color: var(--primary-color);
+      margin-bottom: 0.25rem;
+    }
+    .timeline-user {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+    }
+    .timeline-content {
+      background: var(--background-color);
+      padding: 1rem;
+      border-radius: 0.375rem;
+    }
+    .timeline-purpose {
+      display: inline-block;
+      padding: 0.125rem 0.5rem;
+      background: var(--primary-color);
+      color: white;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      margin-bottom: 0.5rem;
+    }
+    .timeline-meeting {
+      font-size: 0.875rem;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+    .timeline-meta {
+      display: flex;
+      gap: 1rem;
+      margin-top: 0.75rem;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      flex-wrap: wrap;
+    }
+    .timeline-manufacturers {
+      display: flex;
+      gap: 0.25rem;
+      flex-wrap: wrap;
+      margin-top: 0.5rem;
+    }
+    .timeline-mfr-tag {
+      padding: 0.125rem 0.375rem;
+      background: #e0e7ff;
+      color: #3730a3;
+      border-radius: 0.25rem;
+      font-size: 0.7rem;
+    }
+    .no-history {
+      text-align: center;
+      padding: 3rem;
+      color: var(--text-muted);
+    }
+    .customer-select-list {
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .customer-option {
+      padding: 0.75rem;
+      border-bottom: 1px solid var(--border-color);
+      cursor: pointer;
+    }
+    .customer-option:hover {
+      background: var(--background-color);
+    }
+    .customer-option-name {
+      font-weight: 600;
+    }
+    .customer-option-code {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+    .section-header h3 {
+      margin: 0;
+    }
+    .period-info {
+      font-size: 0.8rem;
+      color: #64748b;
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-content">
+      <a href="/dashboard.html" class="logo">営業日報システム</a>
+      <nav class="nav" id="main-nav">
+        <a href="/dashboard.html" class="nav-link">ホーム</a>
+        <a href="/report-list.html" class="nav-link">日報一覧</a>
+        <a href="/calendar.html" class="nav-link">カレンダー</a>
+      </nav>
+      <div class="user-info">
+        <span class="user-name" id="user-name">-</span>
+        <button class="btn btn-outline btn-sm btn-logout" onclick="logout()">ログアウト</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <h1 class="page-title">📋 顧客カルテ</h1>
+
+    <!-- 検索 -->
+    <div class="card">
+      <div class="search-section">
+        <div class="form-group" style="flex: 1; min-width: 200px; margin: 0;">
+          <label class="form-label">顧客/仕入先を検索</label>
+          <input type="text" id="search-input" class="form-input" placeholder="会社名またはコードで検索...">
+        </div>
+        <div class="form-group" style="margin: 0;">
+          <label class="form-label">種別</label>
+          <select id="target-type" class="form-select">
+            <option value="customer">得意先</option>
+            <option value="supplier">仕入先</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="search-results" class="customer-select-list" style="display: none; margin-top: 1rem;"></div>
+    </div>
+
+    <!-- 顧客カルテ -->
+    <div id="target-section" style="display: none;">
+      <!-- ヘッダー情報 -->
+      <div class="target-info" id="target-info">
+        <div class="target-name" id="target-name">-</div>
+        <div class="target-detail" id="target-detail">-</div>
+        <div class="stats-grid">
+          <div class="stat-item">
+            <div class="stat-value" id="stat-visits">-</div>
+            <div class="stat-label">総訪問回数</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value" id="stat-first">-</div>
+            <div class="stat-label">初回訪問</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value" id="stat-last">-</div>
+            <div class="stat-label">最終訪問</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value" id="stat-days">-</div>
+            <div class="stat-label">経過日数</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value" id="stat-amount">-</div>
+            <div class="stat-label">案件金額</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- カルテ詳細 -->
+      <div class="karte-grid">
+        <!-- 担当者 -->
+        <div class="karte-card">
+          <h4>👤 担当者</h4>
+          <div class="rep-list" id="sales-reps">-</div>
+        </div>
+
+        <!-- 主要メーカー -->
+        <div class="karte-card">
+          <h4>🏭 主要メーカー</h4>
+          <div class="mfr-tags" id="top-manufacturers">-</div>
+        </div>
+
+        <!-- 訪問目的 -->
+        <div class="karte-card">
+          <h4>📌 訪問目的</h4>
+          <div class="purpose-list" id="purpose-stats">-</div>
+        </div>
+
+        <!-- 月別訪問推移 -->
+        <div class="karte-card" style="grid-column: 1 / -1;">
+          <h4>📊 月別訪問推移（過去12ヶ月）</h4>
+          <div class="visit-chart" id="monthly-chart"></div>
+        </div>
+      </div>
+
+      <!-- 訪問履歴 -->
+      <div class="card">
+        <div class="section-header">
+          <h3>📋 訪問履歴</h3>
+          <span class="period-info" id="period-info"></span>
+        </div>
+        <div id="history-timeline" class="timeline"></div>
+      </div>
+    </div>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script>
+    let searchTimeout = null;
+    let selectedTargetId = null;
+    let selectedTargetType = 'customer';
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      const user = await checkAuth();
+      if (!user) return;
+
+      document.getElementById('search-input').addEventListener('input', onSearchInput);
+      document.getElementById('target-type').addEventListener('change', () => {
+        document.getElementById('search-results').style.display = 'none';
+        document.getElementById('target-section').style.display = 'none';
+      });
+
+      // URLパラメータからロード
+      const params = new URLSearchParams(window.location.search);
+      const id = params.get('id');
+      const type = params.get('type') || 'customer';
+      if (id) {
+        document.getElementById('target-type').value = type;
+        loadHistory(parseInt(id), type);
+      }
+    });
+
+    function onSearchInput(e) {
+      clearTimeout(searchTimeout);
+      const query = e.target.value.trim();
+      
+      if (query.length < 1) {
+        document.getElementById('search-results').style.display = 'none';
+        return;
+      }
+
+      searchTimeout = setTimeout(() => searchTargets(query), 300);
+    }
+
+    async function searchTargets(query) {
+      const type = document.getElementById('target-type').value;
+      const endpoint = type === 'supplier' ? '/api/suppliers' : '/api/customers';
+      
+      try {
+        const res = await fetch(`${endpoint}?q=${encodeURIComponent(query)}`);
+        const data = await res.json();
+        renderSearchResults(data.slice(0, 20), type);
+      } catch (error) {
+        console.error('検索エラー:', error);
+      }
+    }
+
+    function renderSearchResults(items, type) {
+      const container = document.getElementById('search-results');
+      const codeField = type === 'supplier' ? 'supplier_code' : 'customer_code';
+
+      if (items.length === 0) {
+        container.innerHTML = '<div class="customer-option text-muted">該当する顧客が見つかりません</div>';
+        container.style.display = 'block';
+        return;
+      }
+
+      container.innerHTML = items.map(item => `
+        <div class="customer-option" onclick="selectTarget(${item.id}, '${type}')">
+          <div class="customer-option-name">${escapeHtml(item.name)}</div>
+          <div class="customer-option-code">${item[codeField] || '-'}</div>
+        </div>
+      `).join('');
+
+      container.style.display = 'block';
+    }
+
+    function selectTarget(id, type) {
+      document.getElementById('search-results').style.display = 'none';
+      loadHistory(id, type);
+      
+      // URL更新
+      history.replaceState(null, '', `?id=${id}&type=${type}`);
+    }
+
+    async function loadHistory(id, type) {
+      selectedTargetId = id;
+      selectedTargetType = type;
+
+      try {
+        const res = await fetch(`/api/customer-history/${id}?type=${type}`);
+        const data = await res.json();
+
+        renderTargetInfo(data, type);
+        renderKarteDetails(data);
+        renderTimeline(data.visits);
+
+        document.getElementById('target-section').style.display = 'block';
+      } catch (error) {
+        console.error('履歴読み込みエラー:', error);
+        alert('履歴の読み込みに失敗しました');
+      }
+    }
+
+    function renderTargetInfo(data, type) {
+      const { target, visits, firstVisit, lastVisit } = data;
+      
+      // 背景色を種別で変更
+      const infoEl = document.getElementById('target-info');
+      infoEl.className = type === 'supplier' ? 'target-info supplier' : 'target-info';
+      
+      if (!target) {
+        document.getElementById('target-name').textContent = '（不明）';
+        document.getElementById('target-detail').textContent = '-';
+        return;
+      }
+
+      const codeField = type === 'supplier' ? 'supplier_code' : 'customer_code';
+      const typeLabel = type === 'supplier' ? '仕入先' : '得意先';
+
+      document.getElementById('target-name').textContent = target.name;
+      document.getElementById('target-detail').textContent = 
+        `【${typeLabel}】 ${target[codeField] || '-'} | ${target.address1 || ''} | ${target.phone || ''}`;
+
+      // 統計
+      document.getElementById('stat-visits').textContent = visits.length;
+      
+      if (firstVisit) {
+        document.getElementById('stat-first').textContent = formatShortDate(firstVisit);
+      } else {
+        document.getElementById('stat-first').textContent = '-';
+      }
+      
+      if (lastVisit) {
+        document.getElementById('stat-last').textContent = formatShortDate(lastVisit);
+        // 経過日数
+        const today = new Date();
+        const lastDate = new Date(lastVisit);
+        const diffDays = Math.floor((today - lastDate) / (1000 * 60 * 60 * 24));
+        document.getElementById('stat-days').textContent = diffDays + '日';
+      } else {
+        document.getElementById('stat-last').textContent = '-';
+        document.getElementById('stat-days').textContent = '-';
+      }
+      
+      const totalAmount = visits.reduce((sum, v) => sum + (v.deal_amount || 0), 0);
+      document.getElementById('stat-amount').textContent = totalAmount > 0 ? formatAmount(totalAmount) : '-';
+
+      // 期間情報
+      if (firstVisit && lastVisit) {
+        document.getElementById('period-info').textContent = 
+          `${formatShortDate(firstVisit)} 〜 ${formatShortDate(lastVisit)}`;
+      }
+    }
+
+    function renderKarteDetails(data) {
+      const { salesReps, topManufacturers, monthlyVisits, purposeStats } = data;
+
+      // 担当者
+      const repsContainer = document.getElementById('sales-reps');
+      if (salesReps && salesReps.length > 0) {
+        repsContainer.innerHTML = salesReps.map(rep => `
+          <div class="rep-item">
+            <div>
+              <div class="rep-name">${escapeHtml(rep.name)}</div>
+              <div class="rep-dept">${escapeHtml(rep.department_name || '-')}</div>
+            </div>
+            <div class="rep-stats">
+              <span class="rep-count">${rep.visit_count}回</span><br>
+              <span>最終: ${formatShortDate(rep.last_visit)}</span>
+            </div>
+          </div>
+        `).join('');
+      } else {
+        repsContainer.innerHTML = '<span class="text-muted">データなし</span>';
+      }
+
+      // メーカー
+      const mfrContainer = document.getElementById('top-manufacturers');
+      if (topManufacturers && topManufacturers.length > 0) {
+        mfrContainer.innerHTML = topManufacturers.map(mfr => `
+          <span class="mfr-tag">
+            ${escapeHtml(mfr.name)}
+            <span class="mfr-count">${mfr.mention_count}</span>
+          </span>
+        `).join('');
+      } else {
+        mfrContainer.innerHTML = '<span class="text-muted">データなし</span>';
+      }
+
+      // 月別グラフ
+      const chartContainer = document.getElementById('monthly-chart');
+      if (monthlyVisits && monthlyVisits.length > 0) {
+        const maxCount = Math.max(...monthlyVisits.map(m => m.count), 1);
+        chartContainer.innerHTML = monthlyVisits.map(m => {
+          const height = (m.count / maxCount) * 60;
+          return `
+            <div class="chart-bar-wrapper">
+              <div class="chart-value">${m.count > 0 ? m.count : ''}</div>
+              <div class="chart-bar" style="height: ${height}px;"></div>
+              <div class="chart-label">${m.label}</div>
+            </div>
+          `;
+        }).join('');
+      } else {
+        chartContainer.innerHTML = '<span class="text-muted">データなし</span>';
+      }
+
+      // 訪問目的
+      const purposeLabels = {
+        'sales': '商談',
+        'follow_up': 'フォロー',
+        'claim': 'クレーム',
+        'greeting': '挨拶',
+        'meeting': '打合せ',
+        'info_exchange': '情報交換',
+        'other': 'その他'
+      };
+      const purposeContainer = document.getElementById('purpose-stats');
+      if (purposeStats && purposeStats.length > 0) {
+        purposeContainer.innerHTML = purposeStats.map(p => `
+          <span class="purpose-item">
+            ${purposeLabels[p.visit_purpose] || p.visit_purpose || 'その他'}
+            <span class="purpose-count">${p.count}</span>
+          </span>
+        `).join('');
+      } else {
+        purposeContainer.innerHTML = '<span class="text-muted">データなし</span>';
+      }
+    }
+
+    function renderTimeline(visits) {
+      const container = document.getElementById('history-timeline');
+
+      if (!visits || visits.length === 0) {
+        container.innerHTML = '<div class="no-history"><p>訪問履歴がありません</p></div>';
+        return;
+      }
+
+      const purposeLabels = {
+        'sales': '商談',
+        'follow_up': 'フォローアップ',
+        'claim': 'クレーム対応',
+        'greeting': '挨拶・表敬',
+        'meeting': '打ち合わせ',
+        'info_exchange': '情報交換',
+        'other': 'その他'
+      };
+
+      container.innerHTML = visits.map(v => {
+        const purposeLabel = purposeLabels[v.visit_purpose] || v.visit_purpose || '-';
+        const manufacturers = v.manufacturers && v.manufacturers.length > 0
+          ? `<div class="timeline-manufacturers">${v.manufacturers.map(m => `<span class="timeline-mfr-tag">${escapeHtml(m)}</span>`).join('')}</div>`
+          : '';
+
+        return `
+          <div class="timeline-item">
+            <div class="timeline-date">${formatDateWithDay(v.report_date)}</div>
+            <div class="timeline-user">${escapeHtml(v.user_name)} / ${escapeHtml(v.department_name || '-')}</div>
+            <div class="timeline-content">
+              <span class="timeline-purpose">${purposeLabel}</span>
+              ${manufacturers}
+              <div class="timeline-meeting">${formatLongText(v.meeting_content) || '（商談内容なし）'}</div>
+              <div class="timeline-meta">
+                ${v.deal_amount ? `<span>💰 ${formatAmount(v.deal_amount)}</span>` : ''}
+                ${v.probability ? `<span>確度: ${v.probability}</span>` : ''}
+                ${v.next_action ? `<span>📌 ${escapeHtml(v.next_action)}</span>` : ''}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function formatAmount(amount) {
+      return '¥' + Number(amount).toLocaleString();
+    }
+
+    function formatShortDate(dateStr) {
+      if (!dateStr) return '-';
+      const d = new Date(dateStr);
+      return `${d.getMonth() + 1}/${d.getDate()}`;
+    }
+  </script>
+</body>
+</html>

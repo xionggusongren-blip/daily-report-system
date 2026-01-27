@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>データインポート - 営業日報システム</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .import-section {
+      margin-bottom: 2rem;
+    }
+    .import-section h3 {
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 2px solid #e5e7eb;
+    }
+    .file-input-wrapper {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+    .file-input-wrapper input[type="file"] {
+      flex: 1;
+    }
+    .template-link {
+      font-size: 0.875rem;
+      color: #3b82f6;
+      cursor: pointer;
+    }
+    .template-link:hover {
+      text-decoration: underline;
+    }
+    .import-result {
+      padding: 1rem;
+      border-radius: 0.5rem;
+      margin-top: 1rem;
+      display: none;
+    }
+    .import-result.success {
+      background: #dcfce7;
+      border: 1px solid #22c55e;
+      color: #166534;
+      display: block;
+    }
+    .import-result.error {
+      background: #fee2e2;
+      border: 1px solid #ef4444;
+      color: #991b1b;
+      display: block;
+    }
+    .import-preview {
+      max-height: 300px;
+      overflow-y: auto;
+      margin-top: 1rem;
+    }
+    .preview-count {
+      font-size: 0.875rem;
+      color: #6b7280;
+      margin-bottom: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-content">
+      <a href="/dashboard.html" class="logo">営業日報システム</a>
+      <nav class="nav" id="main-nav">
+        <a href="/dashboard.html" class="nav-link">ホーム</a>
+        <a href="/report-list.html" class="nav-link">日報一覧</a>
+        <a href="/calendar.html" class="nav-link">カレンダー</a>
+      </nav>
+      <div class="user-info">
+        <span class="user-name" id="user-name">-</span>
+        <button class="btn btn-outline btn-sm btn-logout" onclick="logout()">ログアウト</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <h1 class="page-title">📥 データインポート</h1>
+    <p style="color: #6b7280; margin-bottom: 2rem;">CSVファイルから各種マスターデータをインポートできます。</p>
+
+    <!-- ユーザーインポート -->
+    <div class="card import-section">
+      <h3>👤 ユーザーインポート</h3>
+      <p style="font-size: 0.875rem; color: #6b7280; margin-bottom: 1rem;">
+        社員情報をCSVからインポートします。既存のログインIDは更新されます。
+      </p>
+      <div class="file-input-wrapper">
+        <input type="file" id="user-file" accept=".csv" class="form-control">
+        <button class="btn btn-primary" onclick="importUsers()">インポート</button>
+      </div>
+      <span class="template-link" onclick="downloadTemplate('users')">📄 テンプレートをダウンロード</span>
+      <div id="user-preview" class="import-preview"></div>
+      <div id="user-result" class="import-result"></div>
+    </div>
+
+    <!-- 得意先インポート -->
+    <div class="card import-section">
+      <h3>🏢 得意先インポート</h3>
+      <p style="font-size: 0.875rem; color: #6b7280; margin-bottom: 1rem;">
+        得意先マスターをCSVからインポートします。既存の得意先コードは更新されます。<br>
+        <strong>形式:</strong> 得意先コード, 得意先名, 担当者コード, 担当者名<br>
+        <span style="color: #3b82f6;">💡 担当者コードがユーザーのログインIDと一致すると、自動で担当営業として紐づけられます</span>
+      </p>
+      <div class="file-input-wrapper">
+        <input type="file" id="customer-file" accept=".csv" class="form-control">
+        <button class="btn btn-primary" onclick="importCustomers()">インポート</button>
+      </div>
+      <span class="template-link" onclick="downloadTemplate('customers')">📄 テンプレートをダウンロード</span>
+      <div id="customer-preview" class="import-preview"></div>
+      <div id="customer-result" class="import-result"></div>
+    </div>
+
+    <!-- 仕入先インポート -->
+    <div class="card import-section">
+      <h3>🚚 仕入先インポート</h3>
+      <p style="font-size: 0.875rem; color: #6b7280; margin-bottom: 1rem;">
+        仕入先マスターをCSVからインポートします。既存の仕入先コードは更新されます。<br>
+        <strong>形式:</strong> 仕入先コード, 仕入先名
+      </p>
+      <div class="file-input-wrapper">
+        <input type="file" id="supplier-file" accept=".csv" class="form-control">
+        <button class="btn btn-primary" onclick="importSuppliers()">インポート</button>
+      </div>
+      <span class="template-link" onclick="downloadTemplate('suppliers')">📄 テンプレートをダウンロード</span>
+      <div id="supplier-preview" class="import-preview"></div>
+      <div id="supplier-result" class="import-result"></div>
+    </div>
+
+    <!-- 部署インポート -->
+    <div class="card import-section">
+      <h3>🏛️ 部署インポート</h3>
+      <p style="font-size: 0.875rem; color: #6b7280; margin-bottom: 1rem;">
+        部署マスターをCSVからインポートします。既存の部署名は更新されます。
+      </p>
+      <div class="file-input-wrapper">
+        <input type="file" id="department-file" accept=".csv" class="form-control">
+        <button class="btn btn-primary" onclick="importDepartments()">インポート</button>
+      </div>
+      <span class="template-link" onclick="downloadTemplate('departments')">📄 テンプレートをダウンロード</span>
+      <div id="department-preview" class="import-preview"></div>
+      <div id="department-result" class="import-result"></div>
+    </div>
+
+    <!-- 日報インポート -->
+    <div class="card import-section">
+      <h3>📋 日報インポート（既存ツールから移行）</h3>
+      <p style="font-size: 0.875rem; color: #6b7280; margin-bottom: 1rem;">
+        既存の日報ツールからExcelファイルで日報データをインポートします。<br>
+        <strong>対応形式:</strong> NO, 実施日, 開始, 終了, 登録者, 得意先名, 面会者, 得意先, 活動種別, 内容, 訪問目的, 重要度
+      </p>
+      <div class="file-input-wrapper">
+        <input type="file" id="report-file" accept=".xlsx,.xls" class="form-control">
+        <button class="btn btn-primary" onclick="importReports()">インポート</button>
+      </div>
+      <div id="report-preview" class="import-preview"></div>
+      <div id="report-result" class="import-result"></div>
+    </div>
+
+    <!-- 日報エクスポート -->
+    <div class="card import-section">
+      <h3>📤 日報エクスポート</h3>
+      <p style="font-size: 0.875rem; color: #6b7280; margin-bottom: 1rem;">
+        日報データをExcelファイルでエクスポートします。
+      </p>
+      <div class="form-row" style="margin-bottom: 1rem;">
+        <div class="form-group">
+          <label class="form-label">期間（開始）</label>
+          <input type="date" id="export-from" class="form-input">
+        </div>
+        <div class="form-group">
+          <label class="form-label">期間（終了）</label>
+          <input type="date" id="export-to" class="form-input">
+        </div>
+        <div class="form-group">
+          <label class="form-label">ユーザー</label>
+          <select id="export-user" class="form-select">
+            <option value="">全員</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="exportReports()">📥 Excelでエクスポート</button>
+    </div>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const user = await checkAuth();
+      if (!user) return;
+
+      // 管理者以外はアクセス不可
+      if (user.role !== 'admin') {
+        alert('この画面にアクセスする権限がありません');
+        window.location.href = '/dashboard.html';
+        return;
+      }
+
+      // ファイル選択時にプレビュー表示
+      document.getElementById('user-file').addEventListener('change', (e) => previewCSV(e, 'user'));
+      document.getElementById('customer-file').addEventListener('change', (e) => previewCSV(e, 'customer'));
+      document.getElementById('supplier-file').addEventListener('change', (e) => previewCSV(e, 'supplier'));
+      document.getElementById('department-file').addEventListener('change', (e) => previewCSV(e, 'department'));
+    });
+
+    // CSVプレビュー
+    function previewCSV(event, type) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const text = e.target.result;
+        const lines = text.split('\n').filter(l => l.trim());
+        const preview = document.getElementById(`${type}-preview`);
+        
+        if (lines.length <= 1) {
+          preview.innerHTML = '<p class="text-muted">データがありません</p>';
+          return;
+        }
+
+        const headers = parseCSVLine(lines[0]);
+        const dataCount = lines.length - 1;
+
+        let html = `<p class="preview-count">${dataCount}件のデータが見つかりました</p>`;
+        html += '<table class="table"><thead><tr>';
+        headers.forEach(h => html += `<th>${escapeHtml(h)}</th>`);
+        html += '</tr></thead><tbody>';
+
+        // 最大5件表示
+        const maxRows = Math.min(5, dataCount);
+        for (let i = 1; i <= maxRows; i++) {
+          const cols = parseCSVLine(lines[i]);
+          html += '<tr>';
+          cols.forEach(c => html += `<td>${escapeHtml(c)}</td>`);
+          html += '</tr>';
+        }
+
+        if (dataCount > 5) {
+          html += `<tr><td colspan="${headers.length}" class="text-center text-muted">... 他 ${dataCount - 5}件</td></tr>`;
+        }
+
+        html += '</tbody></table>';
+        preview.innerHTML = html;
+      };
+      reader.readAsText(file, 'UTF-8');
+    }
+
+    // CSV行パース（カンマ区切り、ダブルクォート対応）
+    function parseCSVLine(line) {
+      const result = [];
+      let current = '';
+      let inQuotes = false;
+
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+          result.push(current.trim());
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      result.push(current.trim());
+      return result;
+    }
+
+    // テンプレートダウンロード
+    function downloadTemplate(type) {
+      let content = '';
+      let filename = '';
+
+      switch (type) {
+        case 'users':
+          content = 'login_id,password,name,role,department_name\n';
+          content += 'yamada,password123,山田太郎,sales,営業1課\n';
+          content += 'tanaka,password123,田中花子,manager,営業1課\n';
+          filename = 'users_template.csv';
+          break;
+        case 'customers':
+          content = '得意先コード,得意先名,担当者コード,担当者名\n';
+          content += 'C001,株式会社サンプル,T001,山田太郎\n';
+          content += 'C002,サンプル電子工業,T002,田中花子\n';
+          filename = 'customers_template.csv';
+          break;
+        case 'suppliers':
+          content = '仕入先コード,仕入先名\n';
+          content += 'S001,株式会社部品商社\n';
+          content += 'S002,電子部品株式会社\n';
+          filename = 'suppliers_template.csv';
+          break;
+        case 'departments':
+          content = 'name\n';
+          content += '営業1課\n';
+          content += '営業2課\n';
+          content += '技術部\n';
+          filename = 'departments_template.csv';
+          break;
+      }
+
+      // BOM付きUTF-8
+      const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+      const blob = new Blob([bom, content], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // ユーザーインポート
+    async function importUsers() {
+      const file = document.getElementById('user-file').files[0];
+      if (!file) {
+        alert('ファイルを選択してください');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const res = await fetch('/api/import/users', {
+          method: 'POST',
+          body: formData
+        });
+        const result = await res.json();
+        showResult('user', res.ok, result);
+      } catch (error) {
+        showResult('user', false, { error: error.message });
+      }
+    }
+
+    // 得意先インポート
+    async function importCustomers() {
+      const file = document.getElementById('customer-file').files[0];
+      if (!file) {
+        alert('ファイルを選択してください');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const res = await fetch('/api/import/customers', {
+          method: 'POST',
+          body: formData
+        });
+        const result = await res.json();
+        showResult('customer', res.ok, result);
+      } catch (error) {
+        showResult('customer', false, { error: error.message });
+      }
+    }
+
+    // 仕入先インポート
+    async function importSuppliers() {
+      const file = document.getElementById('supplier-file').files[0];
+      if (!file) {
+        alert('ファイルを選択してください');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const res = await fetch('/api/import/suppliers', {
+          method: 'POST',
+          body: formData
+        });
+        const result = await res.json();
+        showResult('supplier', res.ok, result);
+      } catch (error) {
+        showResult('supplier', false, { error: error.message });
+      }
+    }
+
+    // 部署インポート
+    async function importDepartments() {
+      const file = document.getElementById('department-file').files[0];
+      if (!file) {
+        alert('ファイルを選択してください');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const res = await fetch('/api/import/departments', {
+          method: 'POST',
+          body: formData
+        });
+        const result = await res.json();
+        showResult('department', res.ok, result);
+      } catch (error) {
+        showResult('department', false, { error: error.message });
+      }
+    }
+
+    // 日報インポート
+    async function importReports() {
+      const file = document.getElementById('report-file').files[0];
+      if (!file) {
+        alert('ファイルを選択してください');
+        return;
+      }
+
+      if (!confirm('日報データをインポートします。\n既存の日報データと重複する可能性があります。続行しますか？')) {
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const res = await fetch('/api/import/reports', {
+          method: 'POST',
+          body: formData
+        });
+        const result = await res.json();
+        showResult('report', res.ok, result);
+      } catch (error) {
+        showResult('report', false, { error: error.message });
+      }
+    }
+
+    // 日報エクスポート
+    async function exportReports() {
+      const from = document.getElementById('export-from').value;
+      const to = document.getElementById('export-to').value;
+      const userId = document.getElementById('export-user').value;
+
+      if (!from || !to) {
+        alert('期間を指定してください');
+        return;
+      }
+
+      const params = new URLSearchParams({ from, to });
+      if (userId) params.append('user_id', userId);
+
+      window.location.href = `/api/export/reports?${params.toString()}`;
+    }
+
+    // ユーザー一覧を読み込み
+    async function loadUsers() {
+      try {
+        const res = await fetch('/api/users/all');
+        const users = await res.json();
+        const select = document.getElementById('export-user');
+        users.forEach(u => {
+          const opt = document.createElement('option');
+          opt.value = u.id;
+          opt.textContent = u.name;
+          select.appendChild(opt);
+        });
+      } catch (e) {
+        console.error('ユーザー読み込みエラー:', e);
+      }
+    }
+
+    // 初期化時にユーザー読み込み
+    loadUsers();
+
+    // デフォルトの日付設定（今月）
+    const today = new Date();
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+    document.getElementById('export-from').value = firstDay.toISOString().split('T')[0];
+    document.getElementById('export-to').value = today.toISOString().split('T')[0];
+
+    // 結果表示
+    function showResult(type, success, result) {
+      const el = document.getElementById(`${type}-result`);
+      el.className = 'import-result ' + (success ? 'success' : 'error');
+
+      if (success) {
+        let message = `✅ インポート完了: ${result.inserted || 0}件追加`;
+        if (result.updated) {
+          message += `、${result.updated}件更新`;
+        }
+        if (result.duplicates) {
+          message += `、${result.duplicates}件重複スキップ`;
+        }
+        if (result.skipped) {
+          message += `、${result.skipped}件スキップ`;
+        }
+        el.innerHTML = message;
+      } else {
+        el.innerHTML = `❌ エラー: ${result.error || '不明なエラー'}`;
+      }
+    }
+  </script>
+</body>
+</html>

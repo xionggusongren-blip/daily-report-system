@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>未訪問得意先アラート - 営業日報システム</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .alert-container {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    .filter-section {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      margin-bottom: 1.5rem;
+    }
+    
+    /* サマリーカード */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .summary-card {
+      background: white;
+      border: 1px solid var(--border-color);
+      border-radius: 0.5rem;
+      padding: 1rem;
+      text-align: center;
+    }
+    .summary-card.danger {
+      background: linear-gradient(135deg, #fef2f2, #fee2e2);
+      border-color: #fecaca;
+    }
+    .summary-card.warning {
+      background: linear-gradient(135deg, #fffbeb, #fef3c7);
+      border-color: #fde68a;
+    }
+    .summary-card.info {
+      background: linear-gradient(135deg, #eff6ff, #dbeafe);
+      border-color: #bfdbfe;
+    }
+    .summary-value {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #1e293b;
+    }
+    .summary-card.danger .summary-value {
+      color: #dc2626;
+    }
+    .summary-card.warning .summary-value {
+      color: #d97706;
+    }
+    .summary-card.info .summary-value {
+      color: #2563eb;
+    }
+    .summary-label {
+      font-size: 0.8rem;
+      color: #64748b;
+      margin-top: 0.25rem;
+    }
+
+    /* アラートテーブル */
+    .alert-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .alert-table th {
+      background: #f8fafc;
+      padding: 0.75rem;
+      text-align: left;
+      font-weight: 600;
+      font-size: 0.85rem;
+      color: #475569;
+      border-bottom: 2px solid var(--border-color);
+    }
+    .alert-table td {
+      padding: 0.75rem;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 0.9rem;
+    }
+    .alert-table tr:hover {
+      background: #f8fafc;
+    }
+    .alert-row.danger td {
+      background: #fef2f2;
+    }
+    .alert-row.warning td {
+      background: #fffbeb;
+    }
+
+    /* バッジ */
+    .type-badge {
+      display: inline-block;
+      padding: 0.25rem 0.5rem;
+      border-radius: 0.25rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+    .type-badge.customer {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+    .type-badge.supplier {
+      background: #ffedd5;
+      color: #c2410c;
+    }
+    .days-badge {
+      display: inline-block;
+      padding: 0.25rem 0.5rem;
+      border-radius: 0.25rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+    .days-badge.danger {
+      background: #fee2e2;
+      color: #dc2626;
+    }
+    .days-badge.warning {
+      background: #fef3c7;
+      color: #d97706;
+    }
+    .days-badge.info {
+      background: #dbeafe;
+      color: #2563eb;
+    }
+    .days-badge.never {
+      background: #f1f5f9;
+      color: #64748b;
+    }
+
+    .target-name {
+      font-weight: 500;
+    }
+    .target-code {
+      font-size: 0.75rem;
+      color: #64748b;
+    }
+    .visitor-name {
+      font-size: 0.85rem;
+      color: #475569;
+    }
+    .last-visit {
+      font-size: 0.85rem;
+      color: #64748b;
+    }
+
+    .action-link {
+      color: #3b82f6;
+      text-decoration: none;
+      font-size: 0.85rem;
+    }
+    .action-link:hover {
+      text-decoration: underline;
+    }
+
+    .no-data {
+      text-align: center;
+      padding: 3rem;
+      color: #64748b;
+    }
+    .loading {
+      text-align: center;
+      padding: 3rem;
+      color: #64748b;
+    }
+
+    /* ページネーション */
+    .pagination {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 1.5rem;
+    }
+    .pagination button {
+      padding: 0.5rem 1rem;
+      border: 1px solid var(--border-color);
+      background: white;
+      border-radius: 0.375rem;
+      cursor: pointer;
+    }
+    .pagination button:hover:not(:disabled) {
+      background: #f1f5f9;
+    }
+    .pagination button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .pagination-info {
+      font-size: 0.875rem;
+      color: #64748b;
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-content">
+      <a href="/dashboard.html" class="logo">営業日報システム</a>
+      <nav class="nav" id="main-nav">
+        <a href="/dashboard.html" class="nav-link">ホーム</a>
+        <a href="/report-list.html" class="nav-link">日報一覧</a>
+        <a href="/calendar.html" class="nav-link">カレンダー</a>
+      </nav>
+      <div class="user-info">
+        <span class="user-name" id="user-name">-</span>
+        <button class="btn btn-outline btn-sm btn-logout" onclick="logout()">ログアウト</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <div class="alert-container">
+      <h1 class="page-title">⚠️ 未訪問得意先アラート</h1>
+
+      <!-- フィルター -->
+      <div class="card">
+        <div class="filter-section">
+          <div class="form-group" style="margin: 0;">
+            <label class="form-label">しきい値（日数）</label>
+            <select id="filter-days" class="form-select" onchange="loadAlerts()">
+              <option value="30">30日以上</option>
+              <option value="60">60日以上</option>
+              <option value="90" selected>90日以上</option>
+              <option value="180">180日以上</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin: 0;">
+            <label class="form-label">表示</label>
+            <select id="filter-status" class="form-select" onchange="applyFilter()">
+              <option value="all">すべて</option>
+              <option value="never">未訪問のみ</option>
+              <option value="visited">訪問履歴あり</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- サマリー -->
+      <div class="summary-grid" id="summary-grid">
+        <div class="summary-card">
+          <div class="summary-value" id="summary-total">-</div>
+          <div class="summary-label">対象件数</div>
+        </div>
+        <div class="summary-card danger">
+          <div class="summary-value" id="summary-never">-</div>
+          <div class="summary-label">未訪問</div>
+        </div>
+        <div class="summary-card danger">
+          <div class="summary-value" id="summary-90">-</div>
+          <div class="summary-label">90日以上</div>
+        </div>
+        <div class="summary-card warning">
+          <div class="summary-value" id="summary-60">-</div>
+          <div class="summary-label">60〜89日</div>
+        </div>
+        <div class="summary-card info">
+          <div class="summary-value" id="summary-30">-</div>
+          <div class="summary-label">30〜59日</div>
+        </div>
+      </div>
+
+      <!-- アラート一覧 -->
+      <div class="card">
+        <div id="alert-content">
+          <div class="loading">読み込み中...</div>
+        </div>
+        
+        <!-- ページネーション -->
+        <div class="pagination" id="pagination" style="display: none;">
+          <button onclick="prevPage()" id="prev-btn">◀ 前へ</button>
+          <span class="pagination-info" id="page-info">-</span>
+          <button onclick="nextPage()" id="next-btn">次へ ▶</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script>
+    let allAlerts = [];
+    let filteredAlerts = [];
+    let currentPage = 1;
+    const perPage = 30;
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      const user = await checkAuth();
+      if (!user) return;
+      loadAlerts();
+    });
+
+    async function loadAlerts() {
+      const days = document.getElementById('filter-days').value;
+
+      try {
+        document.getElementById('alert-content').innerHTML = '<div class="loading">読み込み中...</div>';
+        const res = await fetch(`/api/unvisited-alerts?days=${days}`);
+        const data = await res.json();
+        
+        renderSummary(data.summary);
+        allAlerts = data.alerts;
+        currentPage = 1;
+        applyFilter();
+      } catch (error) {
+        console.error('アラート読み込みエラー:', error);
+        document.getElementById('alert-content').innerHTML = '<div class="no-data">データの読み込みに失敗しました</div>';
+      }
+    }
+
+    function renderSummary(summary) {
+      document.getElementById('summary-total').textContent = summary.total;
+      document.getElementById('summary-never').textContent = summary.never_visited;
+      document.getElementById('summary-90').textContent = summary.over_90_days;
+      document.getElementById('summary-60').textContent = summary.over_60_days;
+      document.getElementById('summary-30').textContent = summary.over_30_days;
+    }
+
+    function applyFilter() {
+      const status = document.getElementById('filter-status').value;
+      
+      if (status === 'never') {
+        filteredAlerts = allAlerts.filter(a => a.days_since_visit === 9999);
+      } else if (status === 'visited') {
+        filteredAlerts = allAlerts.filter(a => a.days_since_visit !== 9999);
+      } else {
+        filteredAlerts = [...allAlerts];
+      }
+
+      currentPage = 1;
+      renderAlerts();
+    }
+
+    function renderAlerts() {
+      const container = document.getElementById('alert-content');
+      const pagination = document.getElementById('pagination');
+
+      if (filteredAlerts.length === 0) {
+        container.innerHTML = '<div class="no-data">🎉 該当するアラートはありません</div>';
+        pagination.style.display = 'none';
+        return;
+      }
+
+      // ページネーション計算
+      const totalPages = Math.ceil(filteredAlerts.length / perPage);
+      const start = (currentPage - 1) * perPage;
+      const end = start + perPage;
+      const pageAlerts = filteredAlerts.slice(start, end);
+
+      let html = `
+        <table class="alert-table">
+          <thead>
+            <tr>
+              <th>会社名</th>
+              <th>最終訪問</th>
+              <th>経過日数</th>
+              <th>最終訪問者</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
+      pageAlerts.forEach(alert => {
+        const rowClass = getRowClass(alert.days_since_visit);
+        const daysClass = getDaysClass(alert.days_since_visit);
+        const daysText = alert.days_since_visit === 9999 ? '未訪問' : `${Math.floor(alert.days_since_visit)}日`;
+        
+        html += `
+          <tr class="alert-row ${rowClass}">
+            <td>
+              <div class="target-name">${escapeHtml(alert.name)}</div>
+              <div class="target-code">${escapeHtml(alert.code || '-')}</div>
+            </td>
+            <td>
+              <span class="last-visit">${alert.last_visit_date ? formatDate(alert.last_visit_date) : '-'}</span>
+            </td>
+            <td>
+              <span class="days-badge ${daysClass}">${daysText}</span>
+            </td>
+            <td>
+              <span class="visitor-name">${escapeHtml(alert.last_visitor_name || '-')}</span>
+            </td>
+            <td>
+              <a href="/customer-history.html?id=${alert.id}&type=customer" class="action-link">📋 カルテ</a>
+            </td>
+          </tr>
+        `;
+      });
+
+      html += '</tbody></table>';
+      container.innerHTML = html;
+
+      // ページネーション表示
+      if (totalPages > 1) {
+        pagination.style.display = 'flex';
+        document.getElementById('page-info').textContent = `${currentPage} / ${totalPages} ページ（全${filteredAlerts.length}件）`;
+        document.getElementById('prev-btn').disabled = currentPage === 1;
+        document.getElementById('next-btn').disabled = currentPage === totalPages;
+      } else {
+        pagination.style.display = 'none';
+      }
+    }
+
+    function getRowClass(days) {
+      if (days === 9999 || days >= 90) return 'danger';
+      if (days >= 60) return 'warning';
+      return '';
+    }
+
+    function getDaysClass(days) {
+      if (days === 9999) return 'never';
+      if (days >= 90) return 'danger';
+      if (days >= 60) return 'warning';
+      return 'info';
+    }
+
+    function prevPage() {
+      if (currentPage > 1) {
+        currentPage--;
+        renderAlerts();
+      }
+    }
+
+    function nextPage() {
+      const totalPages = Math.ceil(filteredAlerts.length / perPage);
+      if (currentPage < totalPages) {
+        currentPage++;
+        renderAlerts();
+      }
+    }
+  </script>
+</body>
+</html>

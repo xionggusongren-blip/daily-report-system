@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>訪問統計 - 営業日報システム</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .stats-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .stats-controls {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .year-nav {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: white;
+      border: 1px solid var(--border-color);
+      border-radius: 0.375rem;
+      padding: 0.25rem;
+    }
+    .year-nav button {
+      padding: 0.375rem 0.75rem;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      border-radius: 0.25rem;
+      font-size: 1rem;
+    }
+    .year-nav button:hover {
+      background: #f3f4f6;
+    }
+    .year-nav span {
+      font-size: 1.1rem;
+      font-weight: 600;
+      min-width: 80px;
+      text-align: center;
+    }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+    }
+    .summary-card {
+      background: white;
+      border: 1px solid var(--border-color);
+      border-radius: 0.5rem;
+      padding: 0.75rem;
+      text-align: center;
+    }
+    .summary-card.highlight {
+      background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+      color: white;
+      border: none;
+    }
+    .summary-value {
+      font-size: 1.75rem;
+      font-weight: bold;
+      line-height: 1.2;
+    }
+    .summary-label {
+      font-size: 0.75rem;
+      opacity: 0.8;
+      margin-top: 0.25rem;
+    }
+    .chart-section {
+      background: white;
+      border: 1px solid var(--border-color);
+      border-radius: 0.5rem;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+    .chart-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 0.75rem;
+      color: var(--text-color);
+    }
+    .bar-chart {
+      display: flex;
+      align-items: flex-end;
+      height: 160px;
+      gap: 2px;
+      padding: 0 0.25rem;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .bar-group {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 0;
+    }
+    .bar-stack {
+      display: flex;
+      flex-direction: column-reverse;
+      width: 100%;
+      max-width: 24px;
+      margin: 0 auto;
+    }
+    .bar {
+      width: 100%;
+      border-radius: 2px 2px 0 0;
+      transition: height 0.3s;
+      min-height: 0;
+    }
+    .bar.own { background: #3b82f6; border-radius: 0; }
+    .bar.companion { background: #93c5fd; border-radius: 2px 2px 0 0; }
+    .bar.own:last-child { border-radius: 2px 2px 0 0; }
+    .bar-label {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+    .bar-total {
+      font-size: 0.6rem;
+      font-weight: 600;
+      color: var(--text-color);
+      margin-bottom: 2px;
+      height: 14px;
+    }
+    .chart-legend {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      margin-top: 0.75rem;
+      font-size: 0.75rem;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+    }
+    .data-table {
+      width: 100%;
+      font-size: 0.8rem;
+      border-collapse: collapse;
+    }
+    .data-table th, .data-table td {
+      padding: 0.5rem 0.375rem;
+      text-align: right;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .data-table th:first-child, .data-table td:first-child {
+      text-align: left;
+    }
+    .data-table thead th {
+      font-weight: 600;
+      background: #f9fafb;
+    }
+    .data-table tfoot td {
+      font-weight: 600;
+      background: #f0f9ff;
+    }
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+    @media (max-width: 768px) {
+      .two-col {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-content">
+      <a href="/dashboard.html" class="logo">営業日報システム</a>
+      <nav class="nav" id="main-nav">
+        <a href="/dashboard.html" class="nav-link">ホーム</a>
+        <a href="/report-list.html" class="nav-link">日報一覧</a>
+        <a href="/calendar.html" class="nav-link">カレンダー</a>
+      </nav>
+      <div class="user-info">
+        <span class="user-name" id="user-name">-</span>
+        <button class="btn btn-outline btn-sm btn-logout" onclick="logout()">ログアウト</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <div class="stats-header">
+      <h1 class="page-title" style="margin: 0;">📊 訪問統計</h1>
+      <div class="stats-controls">
+        <select id="user-select" class="form-select" style="width: auto; display: none;" onchange="loadStats()">
+          <option value="">全員</option>
+        </select>
+        <div class="year-nav">
+          <button onclick="changeYear(-1)">◀</button>
+          <span id="current-year">2025</span>
+          <button onclick="changeYear(1)">▶</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- サマリー -->
+    <div class="summary-grid">
+      <div class="summary-card highlight">
+        <div class="summary-value" id="total-all">-</div>
+        <div class="summary-label">年間合計</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-value" id="total-visits">-</div>
+        <div class="summary-label">担当</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-value" id="total-companion">-</div>
+        <div class="summary-label">同行</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-value" id="monthly-avg">-</div>
+        <div class="summary-label">月平均</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-value" id="total-customers">-</div>
+        <div class="summary-label">得意先</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-value" id="total-suppliers">-</div>
+        <div class="summary-label">仕入先</div>
+      </div>
+    </div>
+
+    <!-- グラフ -->
+    <div class="chart-section">
+      <div class="chart-title">月別推移</div>
+      <div class="bar-chart" id="monthly-chart"></div>
+      <div class="chart-legend">
+        <div class="legend-item">
+          <div class="legend-dot" style="background: #3b82f6;"></div>
+          <span>担当</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot" style="background: #93c5fd;"></div>
+          <span>同行</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- テーブル -->
+    <div class="two-col">
+      <div class="chart-section">
+        <div class="chart-title">月別詳細</div>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>月</th>
+              <th>担当</th>
+              <th>同行</th>
+              <th>計</th>
+              <th>得意先</th>
+              <th>仕入先</th>
+            </tr>
+          </thead>
+          <tbody id="monthly-table-body"></tbody>
+          <tfoot id="monthly-table-foot"></tfoot>
+        </table>
+      </div>
+      <div class="chart-section">
+        <div class="chart-title">年度比較</div>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>年度</th>
+              <th>担当</th>
+              <th>同行</th>
+              <th>合計</th>
+              <th>日報数</th>
+            </tr>
+          </thead>
+          <tbody id="yearly-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script>
+    let currentYear = new Date().getFullYear();
+    let userRole = 'sales';
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      const user = await checkAuth();
+      if (!user) return;
+
+      userRole = user.role;
+      document.getElementById('current-year').textContent = currentYear;
+
+      if (userRole === 'manager' || userRole === 'admin') {
+        document.getElementById('user-select').style.display = '';
+        await loadUsers();
+      }
+
+      loadStats();
+      loadYearlyComparison();
+    });
+
+    async function loadUsers() {
+      try {
+        const res = await fetch('/api/users');
+        const users = await res.json();
+        const select = document.getElementById('user-select');
+        users.forEach(u => {
+          const option = document.createElement('option');
+          option.value = u.id;
+          option.textContent = u.name;
+          select.appendChild(option);
+        });
+      } catch (error) {
+        console.error('ユーザー読み込みエラー:', error);
+      }
+    }
+
+    function changeYear(delta) {
+      currentYear += delta;
+      document.getElementById('current-year').textContent = currentYear;
+      loadStats();
+    }
+
+    async function loadStats() {
+      const userId = document.getElementById('user-select')?.value || '';
+
+      try {
+        let url = `/api/stats/monthly?year=${currentYear}`;
+        if (userId) url += `&user_id=${userId}`;
+
+        const res = await fetch(url);
+        const data = await res.json();
+
+        renderSummary(data);
+        renderChart(data.months);
+        renderTable(data.months);
+        loadYearlyComparison();
+      } catch (error) {
+        console.error('統計読み込みエラー:', error);
+      }
+    }
+
+    function renderSummary(data) {
+      const totalOwn = data.months.reduce((sum, m) => sum + m.own_visits, 0);
+      const totalCompanion = data.months.reduce((sum, m) => sum + m.companion_visits, 0);
+      const totalAll = totalOwn + totalCompanion;
+      const totalCustomers = data.months.reduce((sum, m) => sum + m.customer_visits, 0);
+      const totalSuppliers = data.months.reduce((sum, m) => sum + m.supplier_visits, 0);
+
+      const activeMonths = data.months.filter(m => m.own_visits + m.companion_visits > 0).length;
+      const avg = activeMonths > 0 ? Math.round(totalAll / activeMonths * 10) / 10 : 0;
+
+      document.getElementById('total-visits').textContent = totalOwn;
+      document.getElementById('total-companion').textContent = totalCompanion;
+      document.getElementById('total-all').textContent = totalAll;
+      document.getElementById('monthly-avg').textContent = avg;
+      document.getElementById('total-customers').textContent = totalCustomers;
+      document.getElementById('total-suppliers').textContent = totalSuppliers;
+    }
+
+    function renderChart(months) {
+      const container = document.getElementById('monthly-chart');
+      const maxValue = Math.max(...months.map(m => m.own_visits + m.companion_visits), 1);
+
+      container.innerHTML = months.map((m, i) => {
+        const ownHeight = (m.own_visits / maxValue) * 130;
+        const compHeight = (m.companion_visits / maxValue) * 130;
+        const total = m.own_visits + m.companion_visits;
+
+        return `
+          <div class="bar-group">
+            <div class="bar-total">${total > 0 ? total : ''}</div>
+            <div class="bar-stack" style="height: ${ownHeight + compHeight}px;">
+              ${compHeight > 0 ? `<div class="bar companion" style="height: ${compHeight}px;" title="同行: ${m.companion_visits}"></div>` : ''}
+              ${ownHeight > 0 ? `<div class="bar own" style="height: ${ownHeight}px;" title="担当: ${m.own_visits}"></div>` : ''}
+            </div>
+            <div class="bar-label">${i + 1}月</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderTable(months) {
+      const tbody = document.getElementById('monthly-table-body');
+      const tfoot = document.getElementById('monthly-table-foot');
+
+      let totalOwn = 0, totalComp = 0, totalCust = 0, totalSupp = 0;
+
+      tbody.innerHTML = months.map((m, i) => {
+        totalOwn += m.own_visits;
+        totalComp += m.companion_visits;
+        totalCust += m.customer_visits;
+        totalSupp += m.supplier_visits;
+
+        const total = m.own_visits + m.companion_visits;
+        return `
+          <tr>
+            <td>${i + 1}月</td>
+            <td>${m.own_visits}</td>
+            <td>${m.companion_visits}</td>
+            <td>${total}</td>
+            <td>${m.customer_visits}</td>
+            <td>${m.supplier_visits}</td>
+          </tr>
+        `;
+      }).join('');
+
+      tfoot.innerHTML = `
+        <tr>
+          <td>計</td>
+          <td>${totalOwn}</td>
+          <td>${totalComp}</td>
+          <td>${totalOwn + totalComp}</td>
+          <td>${totalCust}</td>
+          <td>${totalSupp}</td>
+        </tr>
+      `;
+    }
+
+    async function loadYearlyComparison() {
+      const userId = document.getElementById('user-select')?.value || '';
+
+      try {
+        let url = '/api/stats/yearly';
+        if (userId) url += `?user_id=${userId}`;
+
+        const res = await fetch(url);
+        const data = await res.json();
+
+        const tbody = document.getElementById('yearly-table-body');
+        tbody.innerHTML = data.map(y => `
+          <tr${y.year === currentYear ? ' style="background: #f0f9ff; font-weight: 600;"' : ''}>
+            <td>${y.year}年</td>
+            <td>${y.own_visits}</td>
+            <td>${y.companion_visits}</td>
+            <td>${y.own_visits + y.companion_visits}</td>
+            <td>${y.report_count}</td>
+          </tr>
+        `).join('');
+      } catch (error) {
+        console.error('年度比較読み込みエラー:', error);
+      }
+    }
+  </script>
+</body>
+</html>

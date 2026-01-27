@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>検索 - 営業日報システム</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .search-box {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    .search-box input {
+      flex: 1;
+      font-size: 1.1rem;
+      padding: 0.75rem 1rem;
+    }
+    .search-filters {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+    .search-result {
+      padding: 1rem;
+      border: 1px solid var(--border-color);
+      border-radius: 0.5rem;
+      margin-bottom: 0.75rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .search-result:hover {
+      background: var(--background-color);
+      border-color: var(--primary-color);
+    }
+    .result-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+    .result-date {
+      font-weight: 600;
+      color: var(--primary-color);
+    }
+    .result-user {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+    }
+    .result-content {
+      font-size: 0.875rem;
+      color: #374151;
+      line-height: 1.5;
+    }
+    .result-content mark {
+      background: #fef08a;
+      padding: 0 0.125rem;
+      border-radius: 0.125rem;
+    }
+    .result-visits {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 0.5rem;
+    }
+    .result-count {
+      color: var(--text-muted);
+      margin-bottom: 1rem;
+    }
+    .no-results {
+      text-align: center;
+      padding: 3rem;
+      color: var(--text-muted);
+    }
+    .search-tips {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      margin-top: 1rem;
+    }
+    .search-tips ul {
+      margin: 0.5rem 0 0 1.5rem;
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-content">
+      <a href="/dashboard.html" class="logo">営業日報システム</a>
+      <nav class="nav" id="main-nav">
+        <a href="/dashboard.html" class="nav-link">ホーム</a>
+        <a href="/report-list.html" class="nav-link">日報一覧</a>
+        <a href="/calendar.html" class="nav-link">カレンダー</a>
+      </nav>
+      <div class="user-info">
+        <span class="user-name" id="user-name">-</span>
+        <button class="btn btn-outline btn-sm btn-logout" onclick="logout()">ログアウト</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <h1 class="page-title">🔍 日報検索</h1>
+
+    <div class="card">
+      <div class="search-box">
+        <input type="text" id="search-keyword" class="form-input" placeholder="キーワードを入力（2文字以上）..." autofocus>
+        <button class="btn btn-primary" onclick="doSearch()">検索</button>
+      </div>
+
+      <div class="search-filters">
+        <div class="form-group" style="margin: 0;">
+          <label class="form-label" style="font-size: 0.75rem;">期間（開始）</label>
+          <input type="date" id="filter-from" class="form-input" style="width: auto;">
+        </div>
+        <div class="form-group" style="margin: 0;">
+          <label class="form-label" style="font-size: 0.75rem;">期間（終了）</label>
+          <input type="date" id="filter-to" class="form-input" style="width: auto;">
+        </div>
+        <div class="form-group" style="margin: 0;" id="user-filter-group">
+          <label class="form-label" style="font-size: 0.75rem;">担当者</label>
+          <select id="filter-user" class="form-select" style="width: auto;">
+            <option value="">全員</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="search-tips">
+        <strong>検索対象:</strong>
+        <ul>
+          <li>業務内容、実績・成果、課題・問題点、相談事項</li>
+          <li>訪問記録の商談内容、顧客名</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card" id="results-card" style="display: none;">
+      <div class="result-count" id="result-count">-</div>
+      <div id="search-results"></div>
+    </div>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script>
+    let searchKeyword = '';
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      const user = await checkAuth();
+      if (!user) return;
+
+      // 上長・管理者のみユーザーフィルター表示
+      if (user.role === 'manager' || user.role === 'admin') {
+        await loadUsers();
+      } else {
+        document.getElementById('user-filter-group').style.display = 'none';
+      }
+
+      // Enterキーで検索
+      document.getElementById('search-keyword').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') doSearch();
+      });
+
+      // URLパラメータから検索
+      const urlParams = new URLSearchParams(window.location.search);
+      const q = urlParams.get('q');
+      if (q) {
+        document.getElementById('search-keyword').value = q;
+        doSearch();
+      }
+    });
+
+    async function loadUsers() {
+      try {
+        const res = await fetch('/api/users');
+        const users = await res.json();
+        const select = document.getElementById('filter-user');
+        users.forEach(u => {
+          const option = document.createElement('option');
+          option.value = u.id;
+          option.textContent = u.name;
+          select.appendChild(option);
+        });
+      } catch (error) {
+        console.error('ユーザー読み込みエラー:', error);
+      }
+    }
+
+    async function doSearch() {
+      searchKeyword = document.getElementById('search-keyword').value.trim();
+      
+      if (searchKeyword.length < 2) {
+        alert('検索キーワードは2文字以上入力してください');
+        return;
+      }
+
+      const from = document.getElementById('filter-from').value;
+      const to = document.getElementById('filter-to').value;
+      const userId = document.getElementById('filter-user').value;
+
+      let url = `/api/search?q=${encodeURIComponent(searchKeyword)}`;
+      if (from) url += `&from=${from}`;
+      if (to) url += `&to=${to}`;
+      if (userId) url += `&user_id=${userId}`;
+
+      try {
+        const res = await fetch(url);
+        if (!res.ok) {
+          const err = await res.json();
+          alert(err.error || '検索に失敗しました');
+          return;
+        }
+
+        const results = await res.json();
+        renderResults(results);
+      } catch (error) {
+        console.error('検索エラー:', error);
+        alert('検索中にエラーが発生しました');
+      }
+    }
+
+    function renderResults(results) {
+      const card = document.getElementById('results-card');
+      const countEl = document.getElementById('result-count');
+      const container = document.getElementById('search-results');
+
+      card.style.display = 'block';
+      countEl.textContent = `${results.length}件の結果`;
+
+      if (results.length === 0) {
+        container.innerHTML = `
+          <div class="no-results">
+            <p>「${escapeHtml(searchKeyword)}」に一致する日報は見つかりませんでした</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = results.map(r => {
+        const content = highlightKeyword(r.work_content || '', searchKeyword);
+        const truncated = truncateText(content, 200);
+        
+        return `
+          <div class="search-result" onclick="location.href='/report-detail.html?id=${r.id}'">
+            <div class="result-header">
+              <span class="result-date">${formatDateWithDay(r.report_date)}</span>
+              <span class="result-user">${escapeHtml(r.user_name)} / ${escapeHtml(r.department_name || '-')}</span>
+            </div>
+            <div class="result-content">${truncated}</div>
+            ${r.visit_names ? `<div class="result-visits">訪問先: ${escapeHtml(r.visit_names)}</div>` : ''}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function highlightKeyword(text, keyword) {
+      if (!text || !keyword) return text;
+      const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(`(${escaped})`, 'gi');
+      return escapeHtml(text).replace(regex, '<mark>$1</mark>');
+    }
+
+    function truncateText(text, maxLength) {
+      if (!text) return '';
+      if (text.length <= maxLength) return text;
+      return text.substring(0, maxLength) + '...';
+    }
+  </script>
+</body>
+</html>

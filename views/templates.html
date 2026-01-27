@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>テンプレート管理 - 営業日報システム</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .template-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1rem;
+    }
+    .template-card {
+      border: 1px solid var(--border-color);
+      border-radius: 0.5rem;
+      padding: 1rem;
+      transition: all 0.2s;
+    }
+    .template-card:hover {
+      border-color: var(--primary-color);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .template-card.shared {
+      border-left: 3px solid #10b981;
+    }
+    .template-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 0.75rem;
+    }
+    .template-name {
+      font-weight: 600;
+      font-size: 1rem;
+    }
+    .template-meta {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+    .template-preview {
+      font-size: 0.875rem;
+      color: #374151;
+      line-height: 1.5;
+      max-height: 80px;
+      overflow: hidden;
+      position: relative;
+    }
+    .template-preview::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 30px;
+      background: linear-gradient(transparent, white);
+    }
+    .template-actions {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--border-color);
+    }
+    .shared-badge {
+      display: inline-block;
+      padding: 0.125rem 0.375rem;
+      background: #d1fae5;
+      color: #065f46;
+      border-radius: 9999px;
+      font-size: 0.7rem;
+    }
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.active {
+      display: flex;
+    }
+    .modal-content {
+      background: white;
+      border-radius: 0.5rem;
+      padding: 1.5rem;
+      width: 90%;
+      max-width: 600px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+    .modal-header h3 {
+      margin: 0;
+    }
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: var(--text-muted);
+    }
+    .no-templates {
+      text-align: center;
+      padding: 3rem;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-content">
+      <a href="/dashboard.html" class="logo">営業日報システム</a>
+      <nav class="nav" id="main-nav">
+        <a href="/dashboard.html" class="nav-link">ホーム</a>
+        <a href="/report-list.html" class="nav-link">日報一覧</a>
+        <a href="/calendar.html" class="nav-link">カレンダー</a>
+      </nav>
+      <div class="user-info">
+        <span class="user-name" id="user-name">-</span>
+        <button class="btn btn-outline btn-sm btn-logout" onclick="logout()">ログアウト</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+      <h1 class="page-title" style="margin: 0;">📝 テンプレート管理</h1>
+      <button class="btn btn-primary" onclick="openModal()">+ 新規テンプレート</button>
+    </div>
+
+    <div class="card">
+      <div class="template-grid" id="template-list">
+        <p class="text-muted">読み込み中...</p>
+      </div>
+    </div>
+  </main>
+
+  <!-- モーダル -->
+  <div id="template-modal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modal-title">新規テンプレート</h3>
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+      </div>
+      <form id="template-form" onsubmit="saveTemplate(event)">
+        <input type="hidden" id="template-id">
+
+        <div class="form-group">
+          <label class="form-label required">テンプレート名</label>
+          <input type="text" id="template-name" class="form-input" required placeholder="例: 週次定例報告">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">業務内容</label>
+          <textarea id="template-content" class="form-textarea" rows="4" placeholder="定型の業務内容を入力..."></textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">実績・成果</label>
+          <textarea id="template-achievements" class="form-textarea" rows="3" placeholder="定型の実績・成果を入力..."></textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">課題・問題点</label>
+          <textarea id="template-issues" class="form-textarea" rows="3" placeholder="定型の課題を入力..."></textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">相談事項</label>
+          <textarea id="template-consultation" class="form-textarea" rows="2" placeholder="定型の相談事項を入力..."></textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="checkbox-label" style="cursor: pointer;">
+            <input type="checkbox" id="template-shared">
+            <span>チーム全体で共有する</span>
+          </label>
+          <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">
+            ※共有テンプレートは他のメンバーも使用できます
+          </p>
+        </div>
+
+        <div class="btn-group" style="margin-top: 1.5rem;">
+          <button type="submit" class="btn btn-primary">保存</button>
+          <button type="button" class="btn btn-outline" onclick="closeModal()">キャンセル</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/js/common.js"></script>
+  <script>
+    let templates = [];
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      const user = await checkAuth();
+      if (!user) return;
+
+      await loadTemplates();
+    });
+
+    async function loadTemplates() {
+      try {
+        const res = await fetch('/api/templates');
+        templates = await res.json();
+        renderTemplates();
+      } catch (error) {
+        console.error('テンプレート読み込みエラー:', error);
+      }
+    }
+
+    function renderTemplates() {
+      const container = document.getElementById('template-list');
+
+      if (templates.length === 0) {
+        container.innerHTML = `
+          <div class="no-templates" style="grid-column: 1 / -1;">
+            <p>テンプレートがありません</p>
+            <p style="font-size: 0.875rem;">よく使う業務内容を登録しておくと、日報作成が楽になります</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = templates.map(t => {
+        const isOwner = t.user_id === currentUser.id;
+        const preview = t.work_content || t.achievements || t.issues || '（内容なし）';
+
+        return `
+          <div class="template-card ${t.is_shared ? 'shared' : ''}">
+            <div class="template-header">
+              <div>
+                <div class="template-name">${escapeHtml(t.name)}</div>
+                <div class="template-meta">
+                  ${isOwner ? '自分' : escapeHtml(t.user_name)} が作成
+                  ${t.is_shared ? '<span class="shared-badge">共有</span>' : ''}
+                </div>
+              </div>
+            </div>
+            <div class="template-preview">${escapeHtml(preview)}</div>
+            <div class="template-actions">
+              <button class="btn btn-sm btn-primary" onclick="useTemplate(${t.id})">使用する</button>
+              ${isOwner ? `
+                <button class="btn btn-sm btn-outline" onclick="editTemplate(${t.id})">編集</button>
+                <button class="btn btn-sm btn-outline" style="color: #ef4444;" onclick="deleteTemplate(${t.id})">削除</button>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function openModal(templateId = null) {
+      const modal = document.getElementById('template-modal');
+      const title = document.getElementById('modal-title');
+      const form = document.getElementById('template-form');
+
+      form.reset();
+      document.getElementById('template-id').value = '';
+
+      if (templateId) {
+        title.textContent = 'テンプレート編集';
+        const t = templates.find(x => x.id === templateId);
+        if (t) {
+          document.getElementById('template-id').value = t.id;
+          document.getElementById('template-name').value = t.name;
+          document.getElementById('template-content').value = t.work_content || '';
+          document.getElementById('template-achievements').value = t.achievements || '';
+          document.getElementById('template-issues').value = t.issues || '';
+          document.getElementById('template-consultation').value = t.consultation || '';
+          document.getElementById('template-shared').checked = t.is_shared;
+        }
+      } else {
+        title.textContent = '新規テンプレート';
+      }
+
+      modal.classList.add('active');
+    }
+
+    function closeModal() {
+      document.getElementById('template-modal').classList.remove('active');
+    }
+
+    function editTemplate(id) {
+      openModal(id);
+    }
+
+    async function saveTemplate(event) {
+      event.preventDefault();
+
+      const id = document.getElementById('template-id').value;
+      const data = {
+        name: document.getElementById('template-name').value,
+        work_content: document.getElementById('template-content').value,
+        achievements: document.getElementById('template-achievements').value,
+        issues: document.getElementById('template-issues').value,
+        consultation: document.getElementById('template-consultation').value,
+        is_shared: document.getElementById('template-shared').checked
+      };
+
+      try {
+        const url = id ? `/api/templates/${id}` : '/api/templates';
+        const method = id ? 'PUT' : 'POST';
+
+        const res = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || '保存に失敗しました');
+        }
+
+        closeModal();
+        await loadTemplates();
+        alert(id ? 'テンプレートを更新しました' : 'テンプレートを作成しました');
+      } catch (error) {
+        alert('エラー: ' + error.message);
+      }
+    }
+
+    async function deleteTemplate(id) {
+      const t = templates.find(x => x.id === id);
+      if (!confirm(`「${t.name}」を削除しますか？`)) return;
+
+      try {
+        const res = await fetch(`/api/templates/${id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('削除に失敗しました');
+
+        await loadTemplates();
+        alert('テンプレートを削除しました');
+      } catch (error) {
+        alert('エラー: ' + error.message);
+      }
+    }
+
+    function useTemplate(id) {
+      window.location.href = `/report-new.html?template=${id}`;
+    }
+  </script>
+</body>
+</html>

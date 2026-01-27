@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>月次レポート - 営業日報システム</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .report-container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    .report-section {
+      margin-bottom: 2rem;
+      padding: 1.5rem;
+      background: white;
+      border-radius: 0.5rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .report-section h3 {
+      margin: 0 0 1rem 0;
+      padding-bottom: 0.5rem;
+      border-bottom: 2px solid #e5e7eb;
+      color: #1e40af;
+    }
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1rem;
+    }
+    .stat-card {
+      text-align: center;
+      padding: 1rem;
+      background: #f8fafc;
+      border-radius: 0.5rem;
+    }
+    .stat-value {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #3b82f6;
+    }
+    .stat-label {
+      font-size: 0.875rem;
+      color: #64748b;
+    }
+    .customer-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .customer-tag {
+      padding: 0.25rem 0.75rem;
+      background: #dbeafe;
+      color: #1e40af;
+      border-radius: 1rem;
+      font-size: 0.875rem;
+    }
+    .customer-tag.supplier {
+      background: #ffedd5;
+      color: #c2410c;
+    }
+    .member-summary {
+      margin-bottom: 1.5rem;
+      padding: 1rem;
+      background: #f1f5f9;
+      border-radius: 0.5rem;
+    }
+    .member-summary h4 {
+      margin: 0 0 0.75rem 0;
+      color: #334155;
+    }
+    .visit-detail {
+      margin: 0.5rem 0;
+      padding: 0.75rem;
+      background: white;
+      border-left: 3px solid #3b82f6;
+      border-radius: 0 0.25rem 0.25rem 0;
+    }
+    .visit-detail-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 0.5rem;
+    }
+    .visit-content {
+      font-size: 0.875rem;
+      color: #475569;
+      white-space: pre-line;
+    }
+    @media print {
+      .no-print { display: none !important; }
+      .report-section { box-shadow: none; border: 1px solid #e5e7eb; }
+    }
+  </style>
+</head>
+<body>
+  <!-- ヘッダー -->
+  <header class="header no-print">
+    <div class="header-content">
+      <a href="/dashboard.html" class="logo">営業日報システム</a>
+      <nav class="nav" id="main-nav">
+        <a href="/dashboard.html" class="nav-link">ホーム</a>
+        <a href="/team-reports.html" class="nav-link">チーム日報</a>
+      </nav>
+      <div class="user-info">
+        <span class="user-name" id="user-name">-</span>
+        <button class="btn btn-outline btn-sm btn-logout" onclick="logout()">ログアウト</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- メインコンテンツ -->
+  <main class="main-content">
+    <div class="report-container">
+      <div class="no-print" style="margin-bottom: 1.5rem;">
+        <h1 class="page-title">📊 月次レポート生成</h1>
+        
+        <div class="card">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">対象年月</label>
+              <input type="month" id="target-month" class="form-input">
+            </div>
+            <div class="form-group">
+              <label class="form-label">対象範囲</label>
+              <select id="target-scope" class="form-select">
+                <option value="all">全員</option>
+                <option value="department">部署</option>
+                <option value="user">個人</option>
+                <option value="customer">得意先</option>
+                <option value="supplier">仕入先</option>
+              </select>
+            </div>
+            <div class="form-group" id="department-select-group" style="display: none;">
+              <label class="form-label">部署</label>
+              <select id="target-department" class="form-select"></select>
+            </div>
+            <div class="form-group" id="user-select-group" style="display: none;">
+              <label class="form-label">担当者</label>
+              <select id="target-user" class="form-select"></select>
+            </div>
+            <div class="form-group" id="customer-select-group" style="display: none;">
+              <label class="form-label">得意先</label>
+              <select id="target-customer" class="form-select"></select>
+            </div>
+            <div class="form-group" id="supplier-select-group" style="display: none;">
+              <label class="form-label">仕入先</label>
+              <select id="target-supplier" class="form-select"></select>
+            </div>
+            <div class="form-group" style="display: flex; align-items: flex-end; gap: 0.5rem;">
+              <button type="button" class="btn btn-primary" onclick="generateReport()">レポート生成</button>
+              <button type="button" class="btn btn-outline" onclick="window.print()">🖨 印刷</button>
+            </div>
+          </div>
+          <p style="margin: 1rem 0 0 0; font-size: 0.875rem; color: #64748b;">
+            ※ このレポートはDBの日報データを集計して生成します（AI生成ではないため費用はかかりません）
+          </p>
+        </div>
+      </div>
+
+      <!-- レポート表示エリア -->
+      <div id="report-output" style="display: none;">
+        <!-- ヘッダー -->
+        <div class="report-section" style="text-align: center; background: linear-gradient(135deg, #1e40af, #3b82f6); color: white;">
+          <h2 id="report-title" style="margin: 0; font-size: 1.5rem;">月次営業レポート</h2>
+          <p id="report-period" style="margin: 0.5rem 0 0 0; opacity: 0.9;"></p>
+        </div>
+
+        <!-- 概要統計 -->
+        <div class="report-section">
+          <h3>📈 概要</h3>
+          <div class="stat-grid">
+            <div class="stat-card">
+              <div class="stat-value" id="stat-reports">-</div>
+              <div class="stat-label">日報件数</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="stat-visits">-</div>
+              <div class="stat-label">訪問件数</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="stat-customers">-</div>
+              <div class="stat-label">得意先訪問</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="stat-suppliers">-</div>
+              <div class="stat-label">仕入先訪問</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="stat-members">-</div>
+              <div class="stat-label">活動メンバー数</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 訪問先一覧 -->
+        <div class="report-section">
+          <h3>🏢 訪問先一覧</h3>
+          <div style="margin-bottom: 1rem;">
+            <strong>得意先</strong>
+            <div class="customer-list" id="customer-list"></div>
+          </div>
+          <div>
+            <strong>仕入先</strong>
+            <div class="customer-list" id="supplier-list"></div>
+          </div>
+        </div>
+
+        <!-- メンバー別活動 -->
+        <div class="report-section">
+          <h3>👥 メンバー別活動</h3>
+          <div id="member-activities"></div>
+        </div>
+
+        <!-- 主なトピック -->
+        <div class="report-section">
+          <h3>📝 主な商談・トピック</h3>
+          <div id="main-topics"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const user = await checkAuth();
+      if (!user) return;
+
+      // デフォルトで今月
+      const now = new Date();
+      document.getElementById('target-month').value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+      // 部署・ユーザー・得意先・仕入先読み込み
+      await loadDepartments();
+      await loadUsers();
+      await loadCustomers();
+      await loadSuppliers();
+
+      // 対象範囲変更時
+      document.getElementById('target-scope').addEventListener('change', (e) => {
+        document.getElementById('department-select-group').style.display = e.target.value === 'department' ? 'block' : 'none';
+        document.getElementById('user-select-group').style.display = e.target.value === 'user' ? 'block' : 'none';
+        document.getElementById('customer-select-group').style.display = e.target.value === 'customer' ? 'block' : 'none';
+        document.getElementById('supplier-select-group').style.display = e.target.value === 'supplier' ? 'block' : 'none';
+      });
+    });
+
+    async function loadDepartments() {
+      const res = await fetch('/api/departments');
+      const departments = await res.json();
+      const select = document.getElementById('target-department');
+      departments.forEach(d => {
+        const opt = document.createElement('option');
+        opt.value = d.id;
+        opt.textContent = d.name;
+        select.appendChild(opt);
+      });
+    }
+
+    async function loadUsers() {
+      const res = await fetch('/api/users');
+      const users = await res.json();
+      const select = document.getElementById('target-user');
+      users.forEach(u => {
+        const opt = document.createElement('option');
+        opt.value = u.id;
+        opt.textContent = u.name;
+        select.appendChild(opt);
+      });
+    }
+
+    async function loadCustomers() {
+      const res = await fetch('/api/customers');
+      const customers = await res.json();
+      const select = document.getElementById('target-customer');
+      customers.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.id;
+        opt.textContent = c.name;
+        select.appendChild(opt);
+      });
+    }
+
+    async function loadSuppliers() {
+      const res = await fetch('/api/suppliers');
+      const suppliers = await res.json();
+      const select = document.getElementById('target-supplier');
+      suppliers.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.id;
+        opt.textContent = s.name;
+        select.appendChild(opt);
+      });
+    }
+
+    async function generateReport() {
+      const month = document.getElementById('target-month').value;
+      if (!month) {
+        alert('対象年月を選択してください');
+        return;
+      }
+
+      const scope = document.getElementById('target-scope').value;
+      const departmentId = document.getElementById('target-department').value;
+      const userId = document.getElementById('target-user').value;
+      const customerId = document.getElementById('target-customer').value;
+      const supplierId = document.getElementById('target-supplier').value;
+
+      // 期間計算
+      const [year, mon] = month.split('-');
+      const from = `${year}-${mon}-01`;
+      const lastDay = new Date(parseInt(year), parseInt(mon), 0).getDate();
+      const to = `${year}-${mon}-${lastDay}`;
+
+      // パラメータ構築
+      let params = `from=${from}&to=${to}`;
+      if (scope === 'department' && departmentId) {
+        params += `&department_id=${departmentId}`;
+      } else if (scope === 'user' && userId) {
+        params += `&user_id=${userId}`;
+      } else if (scope === 'customer' && customerId) {
+        params += `&customer_id=${customerId}`;
+      } else if (scope === 'supplier' && supplierId) {
+        params += `&supplier_id=${supplierId}`;
+      }
+      }
+
+      try {
+        const res = await fetch(`/api/monthly-report?${params}`);
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || 'APIエラー');
+        }
+        const data = await res.json();
+
+        if (!data.summary) {
+          throw new Error('レポートデータが不正です');
+        }
+
+        // タイトル設定
+        let scopeTitle = '全員';
+        if (scope === 'department' && departmentId) {
+          const deptOpt = document.querySelector(`#target-department option[value="${departmentId}"]`);
+          scopeTitle = deptOpt ? deptOpt.textContent : '部署';
+        } else if (scope === 'user' && userId) {
+          const userOpt = document.querySelector(`#target-user option[value="${userId}"]`);
+          scopeTitle = userOpt ? userOpt.textContent : '担当者';
+        }
+
+        document.getElementById('report-title').textContent = `${year}年${parseInt(mon)}月 営業レポート`;
+        document.getElementById('report-period').textContent = `対象: ${scopeTitle}`;
+
+        // 統計
+        document.getElementById('stat-reports').textContent = data.summary.reportCount || 0;
+        document.getElementById('stat-visits').textContent = data.summary.visitCount || 0;
+        document.getElementById('stat-customers').textContent = data.summary.customerVisits || 0;
+        document.getElementById('stat-suppliers').textContent = data.summary.supplierVisits || 0;
+        document.getElementById('stat-members').textContent = data.summary.memberCount || 0;
+
+        // 訪問先一覧
+        document.getElementById('customer-list').innerHTML = (data.customers && data.customers.length > 0)
+          ? data.customers.map(c => `<span class="customer-tag">${escapeHtml(c.name)} (${c.count})</span>`).join('')
+          : '<span style="color: #64748b;">なし</span>';
+
+        document.getElementById('supplier-list').innerHTML = (data.suppliers && data.suppliers.length > 0)
+          ? data.suppliers.map(s => `<span class="customer-tag supplier">${escapeHtml(s.name)} (${s.count})</span>`).join('')
+          : '<span style="color: #64748b;">なし</span>';
+
+        // メンバー別活動
+        document.getElementById('member-activities').innerHTML = (data.memberStats && data.memberStats.length > 0)
+          ? data.memberStats.map(m => `
+            <div class="member-summary">
+              <h4>${escapeHtml(m.name)} <span style="font-weight: normal; font-size: 0.875rem; color: #64748b;">(${m.department || '-'})</span></h4>
+              <div style="display: flex; gap: 2rem; font-size: 0.875rem;">
+                <span>日報: <strong>${m.reportCount}</strong>件</span>
+                <span>訪問: <strong>${m.visitCount}</strong>件</span>
+                <span>同行: <strong>${m.companionCount}</strong>件</span>
+              </div>
+            </div>
+          `).join('')
+          : '<p style="color: #64748b;">データがありません</p>';
+
+        // 主なトピック
+        document.getElementById('main-topics').innerHTML = (data.highlights && data.highlights.length > 0)
+          ? data.highlights.map(h => `
+              <div class="visit-detail">
+                <div class="visit-detail-header">
+                  <strong>${escapeHtml(h.customerName)}</strong>
+                  <span style="font-size: 0.875rem; color: #64748b;">${h.date} / ${escapeHtml(h.userName)}</span>
+                </div>
+                <div class="visit-content">${escapeHtml(h.content.substring(0, 300))}${h.content.length > 300 ? '...' : ''}</div>
+              </div>
+            `).join('')
+          : '<p style="color: #64748b;">特筆すべきトピックはありません</p>';
+
+        document.getElementById('report-output').style.display = 'block';
+
+      } catch (error) {
+        console.error('レポート生成エラー:', error);
+        alert('レポート生成に失敗しました: ' + error.message);
+      }
+    }
+  </script>
+</body>
+</html>

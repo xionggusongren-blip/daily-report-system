@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>日報詳細 - 営業日報システム</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .detail-row {
+      display: flex;
+      border-bottom: 1px solid var(--border-color);
+      padding: 0.75rem 0;
+    }
+    .detail-row:last-child {
+      border-bottom: none;
+    }
+    .detail-label {
+      width: 150px;
+      flex-shrink: 0;
+      font-weight: 600;
+      color: var(--text-muted);
+      font-size: 0.875rem;
+    }
+    .detail-value {
+      flex: 1;
+      white-space: pre-wrap;
+    }
+    .visit-card {
+      background: var(--background-color);
+      border-radius: 0.5rem;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+    .visit-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .visit-customer {
+      font-weight: 600;
+      font-size: 1rem;
+    }
+    .visit-customer .target-link {
+      color: inherit;
+      text-decoration: none;
+      border-bottom: 1px dashed var(--primary-color);
+      transition: all 0.2s;
+    }
+    .visit-customer .target-link:hover {
+      color: var(--primary-color);
+      border-bottom-style: solid;
+    }
+    .visit-purpose {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+    }
+    /* 重要キーワードハイライト */
+    .kw-alert {
+      background: linear-gradient(135deg, #fee2e2, #fecaca);
+      color: #991b1b;
+      padding: 0.1rem 0.4rem;
+      border-radius: 0.25rem;
+      font-weight: 600;
+      border: 1px solid #fca5a5;
+    }
+    .kw-warning {
+      background: linear-gradient(135deg, #ffedd5, #fed7aa);
+      color: #9a3412;
+      padding: 0.1rem 0.4rem;
+      border-radius: 0.25rem;
+      font-weight: 600;
+      border: 1px solid #fdba74;
+    }
+    .kw-positive {
+      background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+      color: #166534;
+      padding: 0.1rem 0.4rem;
+      border-radius: 0.25rem;
+      font-weight: 600;
+      border: 1px solid #86efac;
+    }
+    .kw-action {
+      background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+      color: #1e40af;
+      padding: 0.1rem 0.4rem;
+      border-radius: 0.25rem;
+      font-weight: 600;
+      border: 1px solid #93c5fd;
+    }
+    /* Sansan人名リンク */
+    .sansan-person {
+      color: #7c3aed;
+      cursor: pointer;
+      border-bottom: 1px dashed #7c3aed;
+      transition: all 0.2s;
+    }
+    .sansan-person:hover {
+      background: #f3e8ff;
+      border-bottom-style: solid;
+    }
+    /* Sansanモーダル */
+    .sansan-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+    .sansan-modal-content {
+      background: white;
+      border-radius: 0.75rem;
+      width: 90%;
+      max-width: 600px;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
+    }
+    .sansan-modal-header {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .sansan-modal-body {
+      padding: 1.5rem;
+    }
+    .sansan-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 0.5rem;
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+      transition: all 0.2s;
+    }
+    .sansan-card:hover {
+      border-color: #7c3aed;
+      background: #faf5ff;
+    }
+    .sansan-card h4 {
+      margin: 0 0 0.25rem 0;
+      color: #1e1b4b;
+    }
+    .sansan-card .company {
+      color: #7c3aed;
+      font-weight: 500;
+    }
+    .sansan-card .meta {
+      font-size: 0.875rem;
+      color: #64748b;
+      margin-top: 0.5rem;
+    }
+    .manufacturer-tag {
+      display: inline-block;
+      padding: 0.125rem 0.5rem;
+      background: var(--primary-color);
+      color: white;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      margin-right: 0.25rem;
+      margin-bottom: 0.25rem;
+    }
+    .task-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0;
+    }
+    .task-checkbox {
+      width: 1.25rem;
+      height: 1.25rem;
+    }
+    .task-completed {
+      text-decoration: line-through;
+      color: var(--text-muted);
+    }
+    .task-due-badge {
+      font-size: 0.7rem;
+      padding: 0.125rem 0.375rem;
+      border-radius: 0.25rem;
+      margin-left: auto;
+    }
+    .task-due-badge.overdue {
+      background: #fee2e2;
+      color: #dc2626;
+    }
+    .task-due-badge.due-today {
+      background: #fef3c7;
+      color: #d97706;
+    }
+    .task-due-badge.due-future {
+      background: #dbeafe;
+      color: #2563eb;
+    }
+    .attachment-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      background: var(--background-color);
+      border-radius: 0.375rem;
+      margin-bottom: 0.5rem;
+    }
+    .attachment-item a {
+      color: var(--primary-color);
+      text-decoration: none;
+    }
+    .attachment-item a:hover {
+      text-decoration: underline;
+    }
+    .attachment-size {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+    @media (max-width: 768px) {
+      .detail-row {
+        flex-direction: column;
+      }
+      .detail-label {
+        width: 100%;
+        margin-bottom: 0.25rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- ヘッダー -->
+  <header class="header">
+    <div class="header-content">
+      <a href="/dashboard.html" class="logo">営業日報システム</a>
+      <nav class="nav" id="main-nav">
+        <a href="/dashboard.html" class="nav-link">ホーム</a>
+        <a href="/report-list.html" class="nav-link">日報一覧</a>
+        <a href="/calendar.html" class="nav-link">カレンダー</a>
+      </nav>
+      <div class="user-info">
+        <span class="user-name" id="user-name">-</span>
+        <button class="btn btn-outline btn-sm btn-logout" onclick="logout()">ログアウト</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- メインコンテンツ -->
+  <main class="main-content">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+      <h1 class="page-title" style="margin-bottom: 0;">日報詳細</h1>
+      <div id="status-badge"></div>
+    </div>
+
+    <!-- 基本情報 -->
+    <div class="card">
+      <h2 class="card-title">基本情報</h2>
+      <div class="detail-row">
+        <div class="detail-label">日付</div>
+        <div class="detail-value" id="detail-date">-</div>
+      </div>
+      <div class="detail-row">
+        <div class="detail-label">作成者</div>
+        <div class="detail-value" id="detail-user">-</div>
+      </div>
+      <div class="detail-row">
+        <div class="detail-label">部署</div>
+        <div class="detail-value" id="detail-department">-</div>
+      </div>
+      <div class="detail-row">
+        <div class="detail-label">勤務形態</div>
+        <div class="detail-value" id="detail-workstyle">-</div>
+      </div>
+      <div class="detail-row" id="confirmed-by-row" style="display: none;">
+        <div class="detail-label">確認者</div>
+        <div class="detail-value" id="detail-confirmed-by">-</div>
+      </div>
+    </div>
+
+    <!-- タスク -->
+    <div class="card" id="tasks-section">
+      <h2 class="card-title">タスク</h2>
+      <div id="detail-tasks">-</div>
+    </div>
+
+    <!-- 訪問記録 -->
+    <div class="card" id="visits-section">
+      <h2 class="card-title">顧客訪問記録</h2>
+      <div id="detail-visits">-</div>
+    </div>
+
+    <!-- 業務内容 -->
+    <div class="card">
+      <h2 class="card-title">業務内容</h2>
+      <div class="detail-row">
+        <div class="detail-label">本日の業務</div>
+        <div class="detail-value" id="detail-content">-</div>
+      </div>
+      <div class="detail-row">
+        <div class="detail-label">成果・進捗</div>
+        <div class="detail-value" id="detail-achievements">-</div>
+      </div>
+    </div>
+
+    <!-- 課題・その他 -->
+    <div class="card">
+      <h2 class="card-title">課題・その他</h2>
+      <div class="detail-row">
+        <div class="detail-label">課題・問題点</div>
+        <div class="detail-value" id="detail-issues">-</div>
+      </div>
+      <div class="detail-row">
+        <div class="detail-label">相談事項</div>
+        <div class="detail-value" id="detail-consultation">-</div>
+      </div>
+    </div>
+
+    <!-- 添付ファイル -->
+    <div class="card" id="attachments-section">
+      <h2 class="card-title">添付ファイル</h2>
+      <div id="detail-attachments">-</div>
+    </div>
+
+    <!-- コメント -->
+    <div class="card" id="comments-section">
+      <h2 class="card-title">コメント</h2>
+      <div id="comment-list" class="comment-list"></div>
+      <div class="mt-2" id="comment-form-area" style="display: none;">
+        <textarea id="comment-input" class="form-textarea" rows="2" placeholder="コメントを入力..."></textarea>
+        <div class="mt-1">
+          <button type="button" class="btn btn-primary btn-sm" onclick="postComment()">コメント送信</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- アクションボタン -->
+    <div class="card">
+      <div class="btn-group" id="action-buttons">
+        <a href="/report-list.html" class="btn btn-outline">← 一覧に戻る</a>
+      </div>
+    </div>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script>
+    let reportData = null;
+
+    // ページ読み込み時
+    document.addEventListener('DOMContentLoaded', async () => {
+      const user = await checkAuth();
+      if (!user) return;
+
+      const reportId = getUrlParam('id');
+      if (!reportId) {
+        alert('日報IDが指定されていません');
+        window.location.href = '/report-list.html';
+        return;
+      }
+
+      await loadReport(reportId);
+    });
+
+    // 日報読み込み
+    async function loadReport(id) {
+      try {
+        const res = await fetch(`/api/reports/${id}`);
+        if (!res.ok) {
+          const err = await res.json();
+          alert(err.error || '日報の読み込みに失敗しました');
+          window.location.href = '/report-list.html';
+          return;
+        }
+
+        reportData = await res.json();
+        renderReport();
+
+      } catch (error) {
+        console.error('日報読み込みエラー:', error);
+        alert('通信エラーが発生しました');
+      }
+    }
+
+    // 日報表示
+    function renderReport() {
+      const r = reportData;
+
+      // ステータス（確認済みの場合は目立つ表示）
+      let statusHtml = formatStatus(r.status);
+      if (r.status === 'confirmed' && r.confirmed_by_name) {
+        statusHtml = `
+          <div style="display: flex; align-items: center; gap: 0.75rem; background: linear-gradient(135deg, #dcfce7, #d1fae5); padding: 0.5rem 1rem; border-radius: 0.5rem; border: 1px solid #86efac;">
+            <span class="badge badge-confirmed" style="font-size: 0.9rem;">✓ 確認済み</span>
+            <span style="color: #166534; font-size: 0.875rem;">
+              ${escapeHtml(r.confirmed_by_name)} が ${formatDateTime(r.confirmed_at)} に確認
+            </span>
+          </div>
+        `;
+      } else if (r.status === 'rejected') {
+        statusHtml = `
+          <div style="display: flex; align-items: center; gap: 0.75rem; background: #fee2e2; padding: 0.5rem 1rem; border-radius: 0.5rem; border: 1px solid #fca5a5;">
+            <span class="badge badge-rejected" style="font-size: 0.9rem;">差し戻し</span>
+            <span style="color: #991b1b; font-size: 0.875rem;">修正が必要です</span>
+          </div>
+        `;
+      } else if (r.status === 'submitted') {
+        statusHtml = `
+          <div style="display: flex; align-items: center; gap: 0.75rem; background: #dbeafe; padding: 0.5rem 1rem; border-radius: 0.5rem; border: 1px solid #93c5fd;">
+            <span class="badge badge-submitted" style="font-size: 0.9rem;">提出済み</span>
+            <span style="color: #1e40af; font-size: 0.875rem;">確認待ち</span>
+          </div>
+        `;
+      }
+      document.getElementById('status-badge').innerHTML = statusHtml;
+
+      // 基本情報
+      document.getElementById('detail-date').textContent = formatDateWithDay(r.report_date);
+      document.getElementById('detail-user').textContent = r.user_name;
+      document.getElementById('detail-department').textContent = r.department_name || '-';
+      document.getElementById('detail-workstyle').textContent = formatWorkStyle(r.work_style);
+
+      // 確認者情報（ステータスバッジに表示済みなので非表示）
+      document.getElementById('confirmed-by-row').style.display = 'none';
+
+      // 業務内容
+      document.getElementById('detail-content').innerHTML = nl2br(r.work_content) || '-';
+      document.getElementById('detail-achievements').innerHTML = nl2br(r.achievements) || '-';
+
+      // タスク
+      if (r.tasks && r.tasks.length > 0) {
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('detail-tasks').innerHTML = r.tasks.map(t => {
+          let dueBadge = '';
+          if (t.due_date) {
+            const isOverdue = !t.is_completed && t.due_date < today;
+            const isDueToday = !t.is_completed && t.due_date === today;
+            const badgeClass = isOverdue ? 'overdue' : (isDueToday ? 'due-today' : 'due-future');
+            const d = new Date(t.due_date);
+            dueBadge = `<span class="task-due-badge ${badgeClass}">${d.getMonth()+1}/${d.getDate()}</span>`;
+          }
+          return `
+            <div class="task-item">
+              <input type="checkbox" class="task-checkbox" ${t.is_completed ? 'checked' : ''} disabled>
+              <span class="${t.is_completed ? 'task-completed' : ''}">${escapeHtml(t.content)}</span>
+              ${dueBadge}
+            </div>
+          `;
+        }).join('');
+      } else {
+        document.getElementById('tasks-section').style.display = 'none';
+      }
+
+      // 訪問記録
+      if (r.visits && r.visits.length > 0) {
+        document.getElementById('detail-visits').innerHTML = r.visits.map(v => {
+          const visitTypeLabel = v.visit_type === 'supplier' ? '【仕入先】' : '【得意先】';
+          const targetName = v.visit_type === 'supplier' 
+            ? (v.supplier_name || v.customer_name_manual || '（未設定）')
+            : (v.customer_name || v.customer_name_manual || '（未設定）');
+          
+          // リンク生成（マスタ登録されている場合のみ）
+          let targetLink = escapeHtml(targetName);
+          if (v.visit_type === 'supplier' && v.supplier_id) {
+            targetLink = `<a href="/customer-history.html?type=supplier&id=${v.supplier_id}" class="target-link">${escapeHtml(targetName)}</a>`;
+          } else if (v.visit_type === 'customer' && v.customer_id) {
+            targetLink = `<a href="/customer-history.html?type=customer&id=${v.customer_id}" class="target-link">${escapeHtml(targetName)}</a>`;
+          }
+
+          const manufacturers = v.manufacturers && v.manufacturers.length > 0
+            ? v.manufacturers.map(m => `<span class="manufacturer-tag">${escapeHtml(m.name)}</span>`).join('')
+            : '';
+          const companions = v.companions && v.companions.length > 0
+            ? v.companions.map(c => c.name).join('、')
+            : '';
+
+          // 種別変更ボタン（自分の日報または管理者の場合のみ）
+          const canChangeType = r.user_id === currentUser.id || currentUser.role === 'admin';
+          const changeTypeBtn = canChangeType ? `
+            <button class="btn btn-outline btn-sm" style="font-size: 0.7rem; padding: 0.2rem 0.5rem;" 
+                    onclick="changeVisitType(${v.id}, '${v.visit_type}', '${escapeHtml(targetName)}')">
+              種別変更
+            </button>
+          ` : '';
+          
+          // 会社名（Sansan検索用）
+          const companyNameForSearch = v.customer_name || v.supplier_name || '';
+
+          return `
+            <div class="visit-card">
+              <div class="visit-header">
+                <div class="visit-customer">${visitTypeLabel} ${targetLink} ${changeTypeBtn}</div>
+                <div class="visit-purpose">${escapeHtml(v.visit_purpose || '')}</div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">商談内容</div>
+                <div class="detail-value">${applyAllHighlights(v.meeting_content, companyNameForSearch) || '-'}</div>
+              </div>
+              ${manufacturers ? `
+                <div class="detail-row">
+                  <div class="detail-label">メーカー</div>
+                  <div class="detail-value">${manufacturers}</div>
+                </div>
+              ` : ''}
+            </div>
+          `;
+        }).join('');
+      } else {
+        document.getElementById('visits-section').style.display = 'none';
+      }
+
+      // 課題・その他（キーワードハイライト適用）
+      document.getElementById('detail-issues').innerHTML = applyAllHighlights(r.issues) || '-';
+      document.getElementById('detail-consultation').innerHTML = applyAllHighlights(r.consultation) || '-';
+
+      // 添付ファイル読み込み
+      loadAttachments();
+
+      // コメント
+      renderComments();
+
+      // アクションボタン
+      renderActionButtons();
+    }
+
+    // 添付ファイル読み込み
+    async function loadAttachments() {
+      try {
+        const res = await fetch(`/api/reports/${reportData.id}/attachments`);
+        const attachments = await res.json();
+
+        const container = document.getElementById('detail-attachments');
+        
+        if (attachments.length === 0) {
+          document.getElementById('attachments-section').style.display = 'none';
+          return;
+        }
+
+        container.innerHTML = attachments.map(a => {
+          const ext = a.original_name.split('.').pop().toLowerCase();
+          const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext);
+          const isPdf = ext === 'pdf';
+          
+          let previewBtn = '';
+          if (isImage) {
+            previewBtn = `<button class="btn btn-outline btn-sm" style="font-size: 0.7rem; padding: 0.1rem 0.3rem;" onclick="previewImage('/api/attachments/${a.id}/preview', '${escapeHtml(a.original_name)}')">👁 プレビュー</button>`;
+          } else if (isPdf) {
+            previewBtn = `<button class="btn btn-outline btn-sm" style="font-size: 0.7rem; padding: 0.1rem 0.3rem;" onclick="previewPdf('/api/attachments/${a.id}/preview', '${escapeHtml(a.original_name)}')">👁 プレビュー</button>`;
+          }
+          
+          return `
+            <div class="attachment-item" style="display: flex; align-items: center; gap: 0.5rem;">
+              <span>📄</span>
+              <a href="/api/attachments/${a.id}/download">${escapeHtml(a.original_name)}</a>
+              <span class="attachment-size">(${formatFileSize(a.file_size)})</span>
+              ${previewBtn}
+            </div>
+          `;
+        }).join('');
+
+      } catch (error) {
+        console.error('添付ファイル読み込みエラー:', error);
+      }
+    }
+
+    // 画像プレビュー
+    function previewImage(url, filename) {
+      const modal = document.createElement('div');
+      modal.id = 'preview-modal';
+      modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 10000; cursor: pointer;';
+      modal.onclick = (e) => {
+        if (e.target === modal || e.target.tagName !== 'IMG') {
+          modal.remove();
+        }
+      };
+      modal.innerHTML = `
+        <div style="max-width: 90%; max-height: 90%; position: relative;" onclick="event.stopPropagation()">
+          <div style="color: white; margin-bottom: 0.5rem; text-align: center; display: flex; justify-content: space-between; align-items: center;">
+            <span>${escapeHtml(filename)}</span>
+            <button onclick="document.getElementById('preview-modal').remove()" style="background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; margin-left: 1rem;">×</button>
+          </div>
+          <img src="${url}" style="max-width: 100%; max-height: 85vh; border-radius: 0.5rem; cursor: default;" onclick="event.stopPropagation()">
+          <div style="color: white; margin-top: 0.5rem; text-align: center; font-size: 0.8rem;">画像外をクリックで閉じる</div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+    }
+
+    // PDFプレビュー
+    function previewPdf(url, filename) {
+      const modal = document.createElement('div');
+      modal.id = 'preview-modal';
+      modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 10000;';
+      modal.innerHTML = `
+        <div style="width: 90%; height: 90%; background: white; border-radius: 0.5rem; display: flex; flex-direction: column;">
+          <div style="padding: 0.75rem 1rem; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-weight: 600;">${escapeHtml(filename)}</span>
+            <button onclick="document.getElementById('preview-modal').remove()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">×</button>
+          </div>
+          <iframe src="${url}" style="flex: 1; border: none;"></iframe>
+        </div>
+      `;
+      document.body.appendChild(modal);
+    }
+
+    // ファイルサイズフォーマット
+    function formatFileSize(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+
+    // コメント表示
+    function renderComments() {
+      const comments = reportData.comments || [];
+      const container = document.getElementById('comment-list');
+
+      if (comments.length === 0) {
+        container.innerHTML = '<p class="text-muted">コメントはありません</p>';
+      } else {
+        container.innerHTML = comments.map(c => `
+          <div class="comment-item">
+            <div class="comment-header">
+              <span class="comment-author">${escapeHtml(c.user_name)}</span>
+              <span class="comment-date">${formatDateTime(c.created_at)}</span>
+            </div>
+            <div class="comment-body">${nl2br(c.content)}</div>
+          </div>
+        `).join('');
+      }
+
+      // コメント入力フォーム（全ユーザーがコメント可能）
+      document.getElementById('comment-form-area').style.display = 'block';
+    }
+
+    // アクションボタン表示
+    function renderActionButtons() {
+      const r = reportData;
+      const buttons = document.getElementById('action-buttons');
+      let html = '<a href="/report-list.html" class="btn btn-outline">← 一覧に戻る</a>';
+
+      // 自分の日報で確認済み以外は編集可能
+      if (r.user_id === currentUser.id && r.status !== 'confirmed') {
+        html += `<a href="/report-edit.html?id=${r.id}" class="btn btn-primary">編集する</a>`;
+      }
+
+      // 自分の日報で下書きの場合は提出可能
+      if (r.user_id === currentUser.id && r.status === 'draft') {
+        html += `<button class="btn btn-success" onclick="submitReport()">提出する</button>`;
+      }
+
+      // 自分の日報で差し戻しの場合は再提出可能
+      if (r.user_id === currentUser.id && r.status === 'rejected') {
+        html += `<button class="btn btn-success" onclick="submitReport()">再提出する</button>`;
+      }
+
+      // 上長・管理者で提出済みの場合は確認・差し戻し可能
+      if ((currentUser.role === 'manager' || currentUser.role === 'admin') && r.status === 'submitted') {
+        html += `<button class="btn btn-success" onclick="confirmReport()">確認済みにする</button>`;
+        html += `<button class="btn btn-danger" onclick="rejectReport()">差し戻す</button>`;
+      }
+
+      // 自分の日報で確認済み以外は削除可能、または管理者は常に削除可能
+      if ((r.user_id === currentUser.id && r.status !== 'confirmed') || currentUser.role === 'admin') {
+        html += `<button class="btn btn-outline" style="color: var(--danger-color); border-color: var(--danger-color);" onclick="deleteReport()">削除</button>`;
+      }
+
+      buttons.innerHTML = html;
+    }
+
+    // 提出
+    async function submitReport() {
+      if (!confirm('日報を提出しますか？')) return;
+
+      try {
+        const res = await fetch(`/api/reports/${reportData.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...reportData, status: 'submitted' })
+        });
+
+        if (res.ok) {
+          alert('日報を提出しました');
+          location.reload();
+        } else {
+          const err = await res.json();
+          alert('提出に失敗しました: ' + err.error);
+        }
+      } catch (error) {
+        alert('通信エラーが発生しました');
+      }
+    }
+
+    // コメント投稿
+    async function postComment() {
+      const content = document.getElementById('comment-input').value.trim();
+      if (!content) {
+        alert('コメントを入力してください');
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/reports/${reportData.id}/comments`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content })
+        });
+
+        if (res.ok) {
+          document.getElementById('comment-input').value = '';
+          await loadReport(reportData.id);
+        } else {
+          const err = await res.json();
+          alert('コメントの投稿に失敗しました: ' + err.error);
+        }
+      } catch (error) {
+        alert('通信エラーが発生しました');
+      }
+    }
+
+    // 確認済みにする
+    async function confirmReport() {
+      if (!confirm('この日報を確認済みにしますか？')) return;
+
+      try {
+        const res = await fetch(`/api/reports/${reportData.id}/confirm`, {
+          method: 'POST'
+        });
+
+        if (res.ok) {
+          alert('確認済みにしました');
+          location.reload();
+        } else {
+          const err = await res.json();
+          alert('処理に失敗しました: ' + err.error);
+        }
+      } catch (error) {
+        alert('通信エラーが発生しました');
+      }
+    }
+
+    // 差し戻す
+    async function rejectReport() {
+      const reason = prompt('差し戻しの理由を入力してください（コメントとして追加されます）');
+      if (reason === null) return;
+
+      try {
+        const res = await fetch(`/api/reports/${reportData.id}/reject`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reason })
+        });
+
+        if (res.ok) {
+          alert('差し戻しました');
+          location.reload();
+        } else {
+          const err = await res.json();
+          alert('処理に失敗しました: ' + err.error);
+        }
+      } catch (error) {
+        alert('通信エラーが発生しました');
+      }
+    }
+
+    // 日報を削除
+    async function deleteReport() {
+      if (!confirm('この日報を削除しますか？\n※ この操作は取り消せません')) return;
+      if (!confirm('本当に削除してよろしいですか？')) return;
+
+      try {
+        const res = await fetch(`/api/reports/${reportData.id}`, {
+          method: 'DELETE'
+        });
+
+        if (res.ok) {
+          alert('日報を削除しました');
+          location.href = '/report-list.html';
+        } else {
+          const err = await res.json();
+          alert('削除に失敗しました: ' + err.error);
+        }
+      } catch (error) {
+        alert('通信エラーが発生しました');
+      }
+    }
+
+    // 訪問先種別変更
+    async function changeVisitType(visitId, currentType, targetName) {
+      const newType = currentType === 'customer' ? 'supplier' : 'customer';
+      const newTypeLabel = newType === 'customer' ? '得意先' : '仕入先';
+      
+      if (!confirm(`「${targetName}」の訪問先種別を「${newTypeLabel}」に変更しますか？`)) {
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/visits/${visitId}/change-type`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ visit_type: newType })
+        });
+
+        if (res.ok) {
+          alert('種別を変更しました');
+          location.reload();
+        } else {
+          const err = await res.json();
+          alert('変更に失敗しました: ' + err.error);
+        }
+      } catch (error) {
+        alert('通信エラーが発生しました');
+      }
+    }
+
+    // ============================================
+    // Sansan連携機能
+    // ============================================
+    let sansanEnabled = false;
+
+    // Sansan連携状態チェック
+    async function checkSansanStatus() {
+      try {
+        const res = await fetch('/api/sansan/status');
+        const data = await res.json();
+        sansanEnabled = data.enabled;
+      } catch (e) {
+        sansanEnabled = false;
+      }
+    }
+
+    // 人名パターンを検出してリンク化
+    function highlightPersonNames(text, companyName = '') {
+      if (!sansanEnabled || !text) return escapeHtml(text).replace(/\n/g, '<br>');
+      
+      try {
+        // 会社名を全角に正規化（半角カタカナ→全角）
+        const normalizedCompany = normalizeForSearch(companyName);
+        const escapedCompany = normalizedCompany.replace(/'/g, "\\'");
+        
+        let result = escapeHtml(text);
+        const processedNames = new Set();
+        
+        // パターン1: 「○○部長と同行」「○○課長も同行」など → 自社社員（会社名なしで検索）
+        const companionPattern = /([一-龯]{1,4})(部長|課長|係長|主任)(と同行|も同行|と|で|、)/g;
+        result = result.replace(companionPattern, (match, name, title, suffix) => {
+          processedNames.add(name);
+          return `<span class="sansan-person" onclick="searchSansanPerson('${name}', '')">${name}</span>📇${title}${suffix}`;
+        });
+        
+        // パターン2: 「○○様」「○○さん」→ 取引先の人
+        // 日本人の名前として妥当なパターン: 漢字1〜4文字 + 様/さん
+        const customerPattern = /([一-龯]{1,4})(様|さん)/g;
+        result = result.replace(customerPattern, (match, name, suffix) => {
+          // 既に処理済みの名前はスキップ
+          if (processedNames.has(name)) return match;
+          // 既にリンク化されている場合はスキップ
+          if (result.includes(`onclick="searchSansanPerson('${name}'`)) return match;
+          processedNames.add(name);
+          return `<span class="sansan-person" onclick="searchSansanPerson('${name}', '${escapedCompany}')">${name}</span>📇${suffix}`;
+        });
+        
+        // パターン3: 「○○氏」→ 取引先の可能性高い
+        const shiPattern = /([一-龯]{1,4})(氏)/g;
+        result = result.replace(shiPattern, (match, name, suffix) => {
+          if (processedNames.has(name)) return match;
+          if (result.includes(`onclick="searchSansanPerson('${name}'`)) return match;
+          processedNames.add(name);
+          return `<span class="sansan-person" onclick="searchSansanPerson('${name}', '${escapedCompany}')">${name}</span>📇${suffix}`;
+        });
+        
+        return result.replace(/\n/g, '<br>');
+      } catch (e) {
+        console.error('highlightPersonNames error:', e);
+        return escapeHtml(text).replace(/\n/g, '<br>');
+      }
+    }
+    
+    // 重要キーワードハイライト
+    const keywordPatterns = {
+      alert: ['クレーム', '失注', 'トラブル', '苦情', '解約', 'キャンセル', '返品', '不良', '欠品', '遅延', '中止'],
+      warning: ['競合', '値下げ', '価格交渉', '見直し', '延期', '保留', '検討中', '難航', '懸念', '課題'],
+      positive: ['受注', '成約', '決定', '採用', '拡大', '増加', '好感触', '前向き', '即決', '契約', '合意', '確定'],
+      action: ['見積', '提案', 'サンプル', 'デモ', '打合せ', '打ち合わせ', 'プレゼン', '商談', '紹介', '訪問予定']
+    };
+
+    function highlightKeywords(text) {
+      if (!text) return '';
+      
+      let result = text;
+      
+      // 各カテゴリのキーワードをハイライト
+      for (const [category, keywords] of Object.entries(keywordPatterns)) {
+        for (const keyword of keywords) {
+          const regex = new RegExp(`(${keyword})`, 'g');
+          result = result.replace(regex, `<span class="kw-${category}">$1</span>`);
+        }
+      }
+      
+      return result;
+    }
+
+    // テキストに人名ハイライトとキーワードハイライトを適用
+    function applyAllHighlights(text, companyName = '') {
+      if (!text) return '-';
+      
+      // まずエスケープと人名ハイライト
+      let result = highlightPersonNames(text, companyName);
+      
+      // 次にキーワードハイライト（HTMLタグ内は除外）
+      // HTMLタグを一時的に退避
+      const tags = [];
+      result = result.replace(/<[^>]+>/g, (match) => {
+        tags.push(match);
+        return `\x00${tags.length - 1}\x00`;
+      });
+      
+      // キーワードハイライト適用
+      result = highlightKeywords(result);
+      
+      // HTMLタグを復元
+      result = result.replace(/\x00(\d+)\x00/g, (match, index) => tags[parseInt(index)]);
+      
+      return result;
+    }
+
+    // 検索用に文字列を正規化（半角カタカナ→全角）
+    function normalizeForSearch(str) {
+      if (!str) return '';
+      return str
+        // 半角カタカナを全角カタカナに変換
+        .replace(/[\uff66-\uff9f]/g, (s) => {
+          const kanaMap = {
+            'ｦ': 'ヲ', 'ｧ': 'ァ', 'ｨ': 'ィ', 'ｩ': 'ゥ', 'ｪ': 'ェ', 'ｫ': 'ォ', 'ｬ': 'ャ', 'ｭ': 'ュ', 'ｮ': 'ョ', 'ｯ': 'ッ',
+            'ｰ': 'ー', 'ｱ': 'ア', 'ｲ': 'イ', 'ｳ': 'ウ', 'ｴ': 'エ', 'ｵ': 'オ', 'ｶ': 'カ', 'ｷ': 'キ', 'ｸ': 'ク', 'ｹ': 'ケ', 'ｺ': 'コ',
+            'ｻ': 'サ', 'ｼ': 'シ', 'ｽ': 'ス', 'ｾ': 'セ', 'ｿ': 'ソ', 'ﾀ': 'タ', 'ﾁ': 'チ', 'ﾂ': 'ツ', 'ﾃ': 'テ', 'ﾄ': 'ト',
+            'ﾅ': 'ナ', 'ﾆ': 'ニ', 'ﾇ': 'ヌ', 'ﾈ': 'ネ', 'ﾉ': 'ノ', 'ﾊ': 'ハ', 'ﾋ': 'ヒ', 'ﾌ': 'フ', 'ﾍ': 'ヘ', 'ﾎ': 'ホ',
+            'ﾏ': 'マ', 'ﾐ': 'ミ', 'ﾑ': 'ム', 'ﾒ': 'メ', 'ﾓ': 'モ', 'ﾔ': 'ヤ', 'ﾕ': 'ユ', 'ﾖ': 'ヨ',
+            'ﾗ': 'ラ', 'ﾘ': 'リ', 'ﾙ': 'ル', 'ﾚ': 'レ', 'ﾛ': 'ロ', 'ﾜ': 'ワ', 'ﾝ': 'ン'
+          };
+          return kanaMap[s] || s;
+        })
+        // 株式会社等を除去
+        .replace(/^(株式会社|（株）|㈱|\(株\))/g, '')
+        .replace(/(株式会社|（株）|㈱|\(株\))$/g, '')
+        .trim();
+    }
+
+    // Sansan人名検索モーダル表示
+    async function searchSansanPerson(name, companyName = '') {
+      if (!sansanEnabled) {
+        alert('Sansan連携が有効になっていません');
+        return;
+      }
+      
+      // 会社名を正規化
+      const cleanCompany = normalizeForSearch(companyName);
+
+      // モーダル表示
+      const modal = document.createElement('div');
+      modal.className = 'sansan-modal';
+      modal.innerHTML = `
+        <div class="sansan-modal-content">
+          <div class="sansan-modal-header">
+            <h3 style="margin: 0;">📇 Sansan 名刺検索: ${escapeHtml(name)}${cleanCompany ? ` @ ${escapeHtml(cleanCompany)}` : ' (自社社員)'}</h3>
+            <button onclick="this.closest('.sansan-modal').remove()" 
+                    style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">×</button>
+          </div>
+          <div class="sansan-modal-body" id="sansan-search-results">
+            <p style="color: #64748b;">検索中...</p>
+          </div>
+        </div>
+      `;
+      modal.onclick = (e) => {
+        if (e.target === modal) modal.remove();
+      };
+      document.body.appendChild(modal);
+
+      // 検索実行（名前と会社名の両方を使用）
+      try {
+        let url = `/api/sansan/search?name=${encodeURIComponent(name)}`;
+        if (cleanCompany) {
+          url += `&company=${encodeURIComponent(cleanCompany)}`;
+        }
+        const res = await fetch(url);
+        const data = await res.json();
+        const resultsDiv = document.getElementById('sansan-search-results');
+
+        if (res.ok && data.cards && data.cards.length > 0) {
+          resultsDiv.innerHTML = data.cards.map(card => `
+            <div class="sansan-card">
+              <h4>${escapeHtml(card.lastName || '')}${escapeHtml(card.firstName || '')}
+                <span style="font-weight: normal; font-size: 0.875rem; color: #64748b;">
+                  ${escapeHtml(card.lastNameReading || '')} ${escapeHtml(card.firstNameReading || '')}
+                </span>
+              </h4>
+              <div class="company">${escapeHtml(card.companyName || '-')}</div>
+              <div style="font-size: 0.875rem; color: #475569;">
+                ${escapeHtml(card.departmentName || '')} ${escapeHtml(card.title || '')}
+              </div>
+              <div class="meta">
+                ${card.email ? `📧 ${escapeHtml(card.email)}` : ''}
+                ${card.mobile ? `📱 ${escapeHtml(card.mobile)}` : ''}
+                ${card.tel ? `☎ ${escapeHtml(card.tel)}` : ''}
+              </div>
+              <div class="meta">
+                📅 名刺交換日: ${card.exchangeDate || '-'} / 👤 ${escapeHtml(card.owner || '-')}
+              </div>
+            </div>
+          `).join('');
+        } else if (res.ok) {
+          resultsDiv.innerHTML = '<p style="color: #64748b;">該当する名刺が見つかりませんでした</p>';
+        } else {
+          resultsDiv.innerHTML = `<p style="color: #991b1b;">検索エラー: ${data.error || '不明なエラー'}</p>`;
+        }
+      } catch (error) {
+        document.getElementById('sansan-search-results').innerHTML = 
+          `<p style="color: #991b1b;">通信エラー: ${error.message}</p>`;
+      }
+    }
+
+    // 初期化時にSansan状態をチェック
+    checkSansanStatus();
+  </script>
+</body>
+</html>

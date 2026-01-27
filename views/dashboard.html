@@ -1,0 +1,1171 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>日報 - 営業日報システム</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    /* 日報作成エリア */
+    .report-prompt {
+      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+      border: 1px solid #e2e8f0;
+      border-radius: 0.75rem;
+      padding: 2rem;
+      margin-bottom: 1.5rem;
+      text-align: center;
+    }
+    .report-prompt-date {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: #334155;
+      margin-bottom: 0.5rem;
+    }
+    .report-prompt-status {
+      font-size: 0.9rem;
+      color: #64748b;
+      margin-bottom: 1.5rem;
+    }
+    .report-prompt-status.done {
+      color: #059669;
+    }
+    .report-prompt-btn {
+      display: inline-block;
+      padding: 0.875rem 2.5rem;
+      background: #3b82f6;
+      color: white;
+      text-decoration: none;
+      border-radius: 0.5rem;
+      font-size: 1rem;
+      font-weight: 500;
+      transition: background 0.2s;
+    }
+    .report-prompt-btn:hover {
+      background: #2563eb;
+    }
+    .report-prompt-btn.secondary {
+      background: #64748b;
+    }
+    .report-prompt-btn.secondary:hover {
+      background: #475569;
+    }
+    .report-prompt-sub {
+      margin-top: 1rem;
+      font-size: 0.8rem;
+      color: #94a3b8;
+    }
+    .report-prompt-sub a {
+      color: #64748b;
+      text-decoration: none;
+    }
+    .report-prompt-sub a:hover {
+      text-decoration: underline;
+    }
+
+    /* クイックリンク - コンパクトに */
+    .quick-links {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-bottom: 1.5rem;
+    }
+    .quick-link {
+      padding: 0.5rem 0.875rem;
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 0.375rem;
+      color: #475569;
+      text-decoration: none;
+      font-size: 0.8rem;
+      transition: all 0.2s;
+    }
+    .quick-link:hover {
+      background: #f8fafc;
+      border-color: #cbd5e1;
+    }
+
+    /* 統計 - 折りたたみ */
+    .stats-toggle {
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    .stats-toggle summary {
+      padding: 0.75rem 1rem;
+      cursor: pointer;
+      font-size: 0.85rem;
+      color: #64748b;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .stats-toggle summary::-webkit-details-marker {
+      display: none;
+    }
+    .stats-toggle summary::before {
+      content: '▶';
+      font-size: 0.7rem;
+      transition: transform 0.2s;
+    }
+    .stats-toggle[open] summary::before {
+      transform: rotate(90deg);
+    }
+    .stats-toggle-content {
+      padding: 0 1rem 1rem;
+    }
+    .stats-row {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .stat-item {
+      flex: 1;
+      min-width: 100px;
+      text-align: center;
+      padding: 0.75rem;
+      background: #f8fafc;
+      border-radius: 0.375rem;
+    }
+    .stat-item-value {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: #334155;
+    }
+    .stat-item-label {
+      font-size: 0.7rem;
+      color: #94a3b8;
+      margin-top: 0.25rem;
+    }
+
+    /* 最近の日報 - シンプルに */
+    .recent-section {
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 0.5rem;
+      padding: 1rem;
+    }
+    .recent-title {
+      font-size: 0.8rem;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.75rem;
+    }
+    .recent-list {
+      display: flex;
+      flex-direction: column;
+    }
+    .recent-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.625rem 0;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: 0.85rem;
+    }
+    .recent-item:last-child {
+      border-bottom: none;
+    }
+    .recent-item-date {
+      color: #334155;
+      font-weight: 500;
+    }
+    .recent-item-status {
+      font-size: 0.7rem;
+      padding: 0.2rem 0.5rem;
+      border-radius: 9999px;
+    }
+    .recent-item-status.draft {
+      background: #f1f5f9;
+      color: #64748b;
+    }
+    .recent-item-status.submitted {
+      background: #fef3c7;
+      color: #92400e;
+    }
+    .recent-item-status.confirmed {
+      background: #d1fae5;
+      color: #065f46;
+    }
+    .recent-item-status.rejected {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+    .recent-item-link {
+      color: #64748b;
+      text-decoration: none;
+      font-size: 0.75rem;
+    }
+    .recent-item-link:hover {
+      color: #3b82f6;
+    }
+    .recent-more {
+      text-align: center;
+      padding-top: 0.75rem;
+      margin-top: 0.5rem;
+      border-top: 1px solid #f1f5f9;
+    }
+    .recent-more a {
+      font-size: 0.8rem;
+      color: #64748b;
+      text-decoration: none;
+    }
+    .recent-more a:hover {
+      color: #3b82f6;
+    }
+
+    /* タスクアラート */
+    .task-alert {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-left: 4px solid #ef4444;
+      border-radius: 0.5rem;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+    .task-alert.warning {
+      background: #fffbeb;
+      border-color: #fde68a;
+      border-left-color: #f59e0b;
+    }
+    .task-alert.info {
+      background: #eff6ff;
+      border-color: #bfdbfe;
+      border-left-color: #3b82f6;
+    }
+    .task-alert-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+    .task-alert-title {
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .task-alert-count {
+      background: #ef4444;
+      color: white;
+      padding: 0.125rem 0.5rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .task-alert.warning .task-alert-count {
+      background: #f59e0b;
+    }
+    .task-alert.info .task-alert-count {
+      background: #3b82f6;
+    }
+    .task-alert-list {
+      font-size: 0.85rem;
+    }
+    .task-alert-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.375rem 0;
+      border-bottom: 1px solid rgba(0,0,0,0.05);
+    }
+    .task-alert-item:last-child {
+      border-bottom: none;
+    }
+    .task-alert-item-content {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .task-alert-item-date {
+      font-size: 0.75rem;
+      color: #64748b;
+      margin-left: 0.5rem;
+      white-space: nowrap;
+    }
+
+    /* ランキング */
+    .ranking-section {
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 0.5rem;
+      padding: 1rem;
+      margin-top: 1rem;
+    }
+    .ranking-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #334155;
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .ranking-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+    }
+    .ranking-card {
+      background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+      border-radius: 0.5rem;
+      padding: 0.75rem;
+    }
+    .ranking-card-title {
+      font-size: 0.75rem;
+      color: #64748b;
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    .ranking-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.375rem;
+    }
+    .ranking-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+    }
+    .ranking-medal {
+      width: 1.25rem;
+      height: 1.25rem;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      font-weight: bold;
+      color: white;
+    }
+    .ranking-medal.gold { background: linear-gradient(135deg, #fbbf24, #f59e0b); }
+    .ranking-medal.silver { background: linear-gradient(135deg, #9ca3af, #6b7280); }
+    .ranking-medal.bronze { background: linear-gradient(135deg, #d97706, #b45309); }
+    .ranking-name {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .ranking-value {
+      font-weight: 600;
+      color: #3b82f6;
+    }
+  </style>
+</head>
+<body>
+  <!-- ヘッダー -->
+  <header class="header">
+    <div class="header-content">
+      <a href="/dashboard.html" class="logo">営業日報システム</a>
+      
+      <nav class="nav" id="main-nav">
+        <a href="/dashboard.html" class="nav-link active">ホーム</a>
+        <a href="/report-list.html" class="nav-link">日報一覧</a>
+        <a href="/calendar.html" class="nav-link">カレンダー</a>
+        <!-- 上長・管理者用メニューは動的に追加 -->
+      </nav>
+      
+      <div class="user-info">
+        <span class="user-name" id="user-name">-</span>
+        <button class="btn btn-outline btn-sm btn-logout" onclick="logout()">ログアウト</button>
+      </div>
+    </div>
+  </header>
+  
+  <!-- メインコンテンツ -->
+  <main class="main-content">
+    <!-- 通知エリア -->
+    <div id="notification-area" style="display: none;"></div>
+
+    <!-- タスクアラート -->
+    <div id="task-alert-area" style="display: none;"></div>
+
+    <!-- 日報作成プロンプト -->
+    <div class="report-prompt">
+      <div class="report-prompt-date" id="today-date">-</div>
+      <div class="report-prompt-status" id="today-status">今日の日報を作成しましょう</div>
+      
+      <!-- メインアクション：よく使うパターン -->
+      <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; margin-bottom: 1rem;">
+        <a href="/report-new.html?mode=outside" class="btn btn-primary" style="padding: 0.75rem 1.5rem;">
+          🚗 外出・訪問
+        </a>
+        <a href="/report-new.html?mode=office" class="btn btn-outline" style="padding: 0.75rem 1.25rem;">
+          🏢 内勤
+        </a>
+      </div>
+      
+      <div class="report-prompt-sub">
+        <a href="#" onclick="copyFromPrevious(); return false;">📋 前日コピー</a>
+        <span style="margin: 0 0.5rem; color: #cbd5e1;">|</span>
+        <a href="#" onclick="showQuickTemplates(); return false;">📝 その他テンプレート</a>
+      </div>
+    </div>
+
+    <!-- テンプレートクイック選択 -->
+    <div id="quick-templates" style="display: none; margin-bottom: 1.5rem;">
+      <div style="background: white; border: 1px solid #e2e8f0; border-radius: 0.5rem; padding: 1rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+          <span style="font-size: 0.9rem; font-weight: 600; color: #475569;">テンプレートを選択</span>
+          <button onclick="hideQuickTemplates()" style="background: none; border: none; cursor: pointer; color: #94a3b8; font-size: 1.25rem;">×</button>
+        </div>
+        <div id="template-buttons" style="display: flex; flex-wrap: wrap; gap: 0.5rem;"></div>
+      </div>
+    </div>
+
+    <!-- クイックリンク -->
+    <div class="quick-links">
+      <a href="/search.html" class="quick-link">🔍 検索</a>
+      <a href="/stats.html" class="quick-link">📊 統計</a>
+      <a href="/weekly-report.html" class="quick-link">📋 週報</a>
+      <a href="/customer-history.html" class="quick-link">🏢 顧客カルテ</a>
+      <a href="/unvisited-alerts.html" class="quick-link">⚠️ 未訪問</a>
+    </div>
+
+    <!-- 今月のランキング -->
+    <div class="ranking-section">
+      <div class="ranking-title">🏆 今月のランキング</div>
+      <div class="ranking-grid">
+        <div class="ranking-card">
+          <div class="ranking-card-title">📝 日報提出</div>
+          <div class="ranking-list" id="ranking-reports">
+            <div style="color: #94a3b8; font-size: 0.8rem;">読み込み中...</div>
+          </div>
+        </div>
+        <div class="ranking-card">
+          <div class="ranking-card-title">🤝 同行訪問</div>
+          <div class="ranking-list" id="ranking-companion">
+            <div style="color: #94a3b8; font-size: 0.8rem;">読み込み中...</div>
+          </div>
+        </div>
+        <div class="ranking-card">
+          <div class="ranking-card-title">🏢 訪問先数</div>
+          <div class="ranking-list" id="ranking-targets">
+            <div style="color: #94a3b8; font-size: 0.8rem;">読み込み中...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 統計（折りたたみ） -->
+    <details class="stats-toggle">
+      <summary>今月の実績</summary>
+      <div class="stats-toggle-content">
+        <div class="stats-row">
+          <div class="stat-item">
+            <div class="stat-item-value" id="stat-submitted">-</div>
+            <div class="stat-item-label">日報提出</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-item-value" id="stat-own-visits">-</div>
+            <div class="stat-item-label">訪問（担当）</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-item-value" id="stat-companion-visits">-</div>
+            <div class="stat-item-label">訪問（同行）</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-item-value" id="stat-total-visits">-</div>
+            <div class="stat-item-label">訪問合計</div>
+          </div>
+        </div>
+      </div>
+    </details>
+    
+    <!-- 最近の日報 -->
+    <div class="recent-section">
+      <div class="recent-title">最近の日報</div>
+      <div class="recent-list" id="recent-reports">
+        <div class="recent-item" style="justify-content: center; color: #94a3b8;">読み込み中...</div>
+      </div>
+      <div class="recent-more">
+        <a href="/report-list.html">すべての日報を見る →</a>
+      </div>
+    </div>
+
+    <!-- 管理者パネル（上長・管理者のみ表示） -->
+    <div id="manager-panel" style="display: none; margin-top: 1.5rem;">
+      <!-- 未確認日報 -->
+      <div class="recent-section" style="margin-bottom: 1rem; border-left: 4px solid #3b82f6;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+          <div class="recent-title" style="margin-bottom: 0;">📋 確認待ちの日報</div>
+          <span id="pending-count" class="badge" style="background: #3b82f6; color: white; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem;">0件</span>
+        </div>
+        <div id="pending-reports-list">
+          <div style="text-align: center; color: #94a3b8; padding: 1rem; font-size: 0.85rem;">読み込み中...</div>
+        </div>
+        <div class="recent-more">
+          <a href="/team-reports.html?status=submitted">チーム日報を見る →</a>
+        </div>
+      </div>
+
+      <!-- 長期未訪問顧客アラート -->
+      <div id="long-unvisited-section" class="recent-section" style="margin-bottom: 1rem; border-left: 4px solid #f59e0b; display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+          <div class="recent-title" style="margin-bottom: 0;">⚠️ 長期未訪問の顧客</div>
+          <span id="unvisited-count" class="badge" style="background: #f59e0b; color: white; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem;">0件</span>
+        </div>
+        <div id="unvisited-list"></div>
+      </div>
+
+      <!-- 今週のチームサマリー -->
+      <details class="stats-toggle" style="border-left: 4px solid #10b981;">
+        <summary>📊 チーム活動サマリー（今週）</summary>
+        <div class="stats-toggle-content">
+          <div class="stats-row" id="team-summary-stats">
+            <div class="stat-item">
+              <div class="stat-item-value" id="team-reports-count">-</div>
+              <div class="stat-item-label">日報提出数</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-item-value" id="team-visits-count">-</div>
+              <div class="stat-item-label">訪問件数</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-item-value" id="team-confirmed-count">-</div>
+              <div class="stat-item-label">確認済み</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-item-value" id="team-pending-count">-</div>
+              <div class="stat-item-label">未確認</div>
+            </div>
+          </div>
+          <div id="team-member-activity" style="margin-top: 1rem;"></div>
+        </div>
+      </details>
+    </div>
+  </main>
+  
+  <script src="/js/common.js"></script>
+  <script>
+    // ページ読み込み時
+    document.addEventListener('DOMContentLoaded', async () => {
+      const user = await checkAuth();
+      if (!user) return;
+
+      // アシスタントの場合は日報作成エリアを非表示にしてチーム日報へのリンクを表示
+      if (user.role === 'assistant') {
+        document.querySelector('.report-prompt').innerHTML = `
+          <div class="report-prompt-date" id="today-date">-</div>
+          <div class="report-prompt-status">チーム日報を確認できます</div>
+          <div style="margin-top: 1rem;">
+            <a href="/team-reports.html" class="btn btn-primary" style="padding: 0.75rem 1.5rem;">
+              📋 チーム日報を見る
+            </a>
+          </div>
+        `;
+        // 今日の日付だけ更新
+        updateTodayDisplay();
+        return;
+      }
+
+      // 今日の日付表示
+      updateTodayDisplay();
+      
+      // 今日の日報状態チェック
+      await checkTodayReport();
+      
+      // タスクアラートを取得
+      loadTaskAlerts();
+      
+      // 統計情報を取得
+      loadDashboardStats();
+      
+      // 最近の日報を取得
+      loadRecentReports();
+      
+      // ランキングを取得
+      loadRankings();
+    });
+
+    // 今日の日付表示
+    function updateTodayDisplay() {
+      const now = new Date();
+      const month = now.getMonth() + 1;
+      const date = now.getDate();
+      const days = ['日', '月', '火', '水', '木', '金', '土'];
+      const day = days[now.getDay()];
+      
+      document.getElementById('today-date').textContent = `${month}月${date}日（${day}）`;
+    }
+
+    // 今日の日報状態チェック
+    async function checkTodayReport() {
+      try {
+        const res = await fetch('/api/reports');
+        const reports = await res.json();
+        const today = getTodayString();
+        const todayReport = reports.find(r => r.report_date === today);
+
+        const statusEl = document.getElementById('today-status');
+        const btnEl = document.getElementById('main-action-btn');
+
+        if (todayReport) {
+          if (todayReport.status === 'draft') {
+            statusEl.textContent = '下書きがあります';
+            btnEl.textContent = '続きを書く';
+            btnEl.href = `/report-edit.html?id=${todayReport.id}`;
+          } else if (todayReport.status === 'submitted') {
+            statusEl.textContent = '確認待ちです';
+            statusEl.classList.add('done');
+            btnEl.textContent = '内容を確認';
+            btnEl.href = `/report-detail.html?id=${todayReport.id}`;
+            btnEl.classList.add('secondary');
+          } else if (todayReport.status === 'confirmed') {
+            statusEl.textContent = '完了しています ✓';
+            statusEl.classList.add('done');
+            btnEl.textContent = '内容を確認';
+            btnEl.href = `/report-detail.html?id=${todayReport.id}`;
+            btnEl.classList.add('secondary');
+          } else if (todayReport.status === 'rejected') {
+            statusEl.textContent = '差し戻しがあります';
+            statusEl.style.color = '#dc2626';
+            btnEl.textContent = '修正する';
+            btnEl.href = `/report-edit.html?id=${todayReport.id}`;
+          }
+        }
+      } catch (e) {
+        console.log('日報チェックエラー:', e);
+      }
+    }
+    
+    // 統計情報読み込み
+    async function loadDashboardStats() {
+      try {
+        const userRes = await fetch('/api/me');
+        const userData = await userRes.json();
+        const userRole = userData.role;
+
+        const response = await fetch('/api/reports');
+        const reports = await response.json();
+        
+        const now = new Date();
+        const thisMonth = reports.filter(r => {
+          const d = new Date(r.report_date);
+          return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+        });
+        
+        const submitted = thisMonth.filter(r => r.status !== 'draft').length;
+        document.getElementById('stat-submitted').textContent = submitted;
+        
+        // 通知関連
+        const myPending = reports.filter(r => r.status === 'submitted').length;
+        const myRejected = reports.filter(r => r.status === 'rejected').length;
+
+        let teamPending = 0;
+        if (userRole === 'manager' || userRole === 'admin') {
+          const teamRes = await fetch('/api/team-reports?status=submitted');
+          const teamReports = await teamRes.json();
+          teamPending = teamReports.length;
+        }
+
+        let commentNotifications = [];
+        let submittedNotifications = [];
+        try {
+          const notifRes = await fetch('/api/notifications');
+          const notifications = await notifRes.json();
+          commentNotifications = notifications.filter(n => n.type === 'comment');
+          submittedNotifications = notifications.filter(n => n.type === 'submitted');
+        } catch (e) {}
+        
+        showNotifications(myPending, myRejected, teamPending, userRole, commentNotifications, submittedNotifications);
+
+        // 訪問統計
+        const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+        const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        const fromStr = formatDateParam(firstDay);
+        const toStr = formatDateParam(lastDay);
+        
+        const visitRes = await fetch(`/api/stats/visits?from=${fromStr}&to=${toStr}`);
+        const visitStats = await visitRes.json();
+        
+        document.getElementById('stat-own-visits').textContent = visitStats.own_visits;
+        document.getElementById('stat-companion-visits').textContent = visitStats.companion_visits;
+        document.getElementById('stat-total-visits').textContent = visitStats.total_visits;
+        
+      } catch (error) {
+        console.error('統計読み込みエラー:', error);
+      }
+    }
+
+    // 通知表示
+    function showNotifications(myPending, myRejected, teamPending, userRole, commentNotifications = [], submittedNotifications = []) {
+      const area = document.getElementById('notification-area');
+      const notifications = [];
+
+      // マネージャー/管理者向け：確認待ち日報の通知（提出通知があればその件数、なければteamPendingを使用）
+      if ((userRole === 'manager' || userRole === 'admin') && teamPending > 0) {
+        notifications.push(`
+          <div class="notification notification-success" onclick="location.href='/team-reports.html'" style="background: #d1fae5; border-color: #10b981;">
+            <div class="notification-icon">📝</div>
+            <div class="notification-content">
+              <div class="notification-title">確認待ちの日報があります</div>
+              <div class="notification-message">${teamPending}件</div>
+            </div>
+            <div class="notification-action">確認 →</div>
+          </div>
+        `);
+      }
+
+      if (commentNotifications.length > 0) {
+        notifications.push(`
+          <div class="notification notification-info" onclick="location.href='/report-detail.html?id=${commentNotifications[0].report_id}'">
+            <div class="notification-icon">💬</div>
+            <div class="notification-content">
+              <div class="notification-title">コメントがあります</div>
+              <div class="notification-message">${commentNotifications.length}件</div>
+            </div>
+            <div class="notification-action">確認 →</div>
+          </div>
+        `);
+      }
+
+      if (myRejected > 0) {
+        notifications.push(`
+          <div class="notification notification-warning" onclick="location.href='/report-list.html'">
+            <div class="notification-icon">⚠️</div>
+            <div class="notification-content">
+              <div class="notification-title">差し戻しの日報</div>
+              <div class="notification-message">${myRejected}件</div>
+            </div>
+            <div class="notification-action">確認 →</div>
+          </div>
+        `);
+      }
+
+      if (notifications.length > 0) {
+        area.style.display = 'block';
+        area.innerHTML = notifications.join('');
+      }
+    }
+
+    // タスクアラート読み込み
+    async function loadTaskAlerts() {
+      try {
+        const res = await fetch('/api/tasks/alerts');
+        const alerts = await res.json();
+        
+        const area = document.getElementById('task-alert-area');
+        const html = [];
+
+        // 期限切れ
+        if (alerts.overdue && alerts.overdue.length > 0) {
+          html.push(`
+            <div class="task-alert">
+              <div class="task-alert-header">
+                <span class="task-alert-title">⚠️ 期限切れのタスク</span>
+                <span class="task-alert-count">${alerts.overdue.length}件</span>
+              </div>
+              <div class="task-alert-list">
+                ${alerts.overdue.slice(0, 5).map(t => `
+                  <div class="task-alert-item" id="task-alert-${t.id}" style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="flex: 1;">
+                      <span class="task-alert-item-content">${escapeHtml(t.content)}</span>
+                      <span class="task-alert-item-date">${formatDate(t.due_date)}</span>
+                    </div>
+                    <button onclick="completeTask(${t.id})" class="btn btn-sm" style="padding: 0.2rem 0.5rem; font-size: 0.7rem; background: #10b981; color: white; border: none;">完了</button>
+                  </div>
+                `).join('')}
+                ${alerts.overdue.length > 5 ? `<div style="font-size: 0.75rem; color: #64748b; text-align: right;">他 ${alerts.overdue.length - 5}件</div>` : ''}
+              </div>
+            </div>
+          `);
+        }
+
+        // 今日が期限
+        if (alerts.dueToday && alerts.dueToday.length > 0) {
+          html.push(`
+            <div class="task-alert warning">
+              <div class="task-alert-header">
+                <span class="task-alert-title">📅 今日が期限のタスク</span>
+                <span class="task-alert-count">${alerts.dueToday.length}件</span>
+              </div>
+              <div class="task-alert-list">
+                ${alerts.dueToday.map(t => `
+                  <div class="task-alert-item" id="task-alert-${t.id}" style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="flex: 1;">
+                      <span class="task-alert-item-content">${escapeHtml(t.content)}</span>
+                    </div>
+                    <button onclick="completeTask(${t.id})" class="btn btn-sm" style="padding: 0.2rem 0.5rem; font-size: 0.7rem; background: #10b981; color: white; border: none;">完了</button>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          `);
+        }
+
+        // 期限間近（3日以内）
+        if (alerts.upcoming && alerts.upcoming.length > 0) {
+          html.push(`
+            <div class="task-alert info">
+              <div class="task-alert-header">
+                <span class="task-alert-title">📋 期限が近いタスク（3日以内）</span>
+                <span class="task-alert-count">${alerts.upcoming.length}件</span>
+              </div>
+              <div class="task-alert-list">
+                ${alerts.upcoming.slice(0, 3).map(t => `
+                  <div class="task-alert-item">
+                    <span class="task-alert-item-content">${escapeHtml(t.content)}</span>
+                    <span class="task-alert-item-date">${formatDate(t.due_date)}</span>
+                  </div>
+                `).join('')}
+                ${alerts.upcoming.length > 3 ? `<div style="font-size: 0.75rem; color: #64748b; text-align: right;">他 ${alerts.upcoming.length - 3}件</div>` : ''}
+              </div>
+            </div>
+          `);
+        }
+
+        if (html.length > 0) {
+          area.style.display = 'block';
+          area.innerHTML = html.join('');
+        }
+      } catch (error) {
+        console.error('タスクアラート読み込みエラー:', error);
+      }
+    }
+
+    function formatDate(dateStr) {
+      if (!dateStr) return '';
+      const d = new Date(dateStr);
+      return `${d.getMonth() + 1}/${d.getDate()}`;
+    }
+
+    // 最近の日報読み込み
+    async function loadRecentReports() {
+      try {
+        const response = await fetch('/api/reports');
+        const reports = await response.json();
+        
+        const container = document.getElementById('recent-reports');
+        
+        if (reports.length === 0) {
+          container.innerHTML = '<div class="recent-item" style="justify-content: center; color: #94a3b8;">日報がありません</div>';
+          return;
+        }
+        
+        const recent = reports.slice(0, 5);
+        container.innerHTML = recent.map(r => {
+          const statusClass = r.status;
+          const statusText = {
+            'draft': '下書き',
+            'submitted': '確認待ち',
+            'confirmed': '確認済',
+            'rejected': '差戻し'
+          }[r.status] || r.status;
+          
+          const date = new Date(r.report_date);
+          const dateStr = `${date.getMonth() + 1}/${date.getDate()}`;
+          
+          return `
+            <div class="recent-item">
+              <span class="recent-item-date">${dateStr}</span>
+              <span class="recent-item-status ${statusClass}">${statusText}</span>
+              <a href="/report-detail.html?id=${r.id}" class="recent-item-link">詳細</a>
+            </div>
+          `;
+        }).join('');
+        
+      } catch (error) {
+        console.error('最近の日報読み込みエラー:', error);
+      }
+    }
+
+    // 前日コピー
+    async function copyFromPrevious() {
+      try {
+        const res = await fetch('/api/reports');
+        const reports = await res.json();
+        
+        if (reports.length === 0) {
+          alert('コピー元の日報がありません');
+          return;
+        }
+
+        const prev = reports[0];
+        // 日報作成画面へ遷移してコピー
+        window.location.href = `/report-new.html?copy=${prev.id}`;
+      } catch (e) {
+        alert('エラーが発生しました');
+      }
+    }
+
+    // テンプレートクイック選択
+    async function showQuickTemplates() {
+      const container = document.getElementById('quick-templates');
+      const btnContainer = document.getElementById('template-buttons');
+      
+      try {
+        const res = await fetch('/api/templates');
+        const templates = await res.json();
+        
+        if (templates.length === 0) {
+          btnContainer.innerHTML = '<span style="color: #94a3b8; font-size: 0.85rem;">テンプレートがありません</span>';
+        } else {
+          btnContainer.innerHTML = templates.map(t => `
+            <button onclick="useTemplate(${t.id})" style="
+              padding: 0.5rem 1rem;
+              background: #f1f5f9;
+              border: 1px solid #e2e8f0;
+              border-radius: 0.375rem;
+              cursor: pointer;
+              font-size: 0.85rem;
+              transition: all 0.15s;
+            " onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'">${escapeHtml(t.name)}</button>
+          `).join('');
+        }
+        
+        container.style.display = 'block';
+      } catch (e) {
+        console.error('テンプレート読み込みエラー:', e);
+      }
+    }
+
+    function hideQuickTemplates() {
+      document.getElementById('quick-templates').style.display = 'none';
+    }
+
+    function useTemplate(templateId) {
+      window.location.href = `/report-new.html?template=${templateId}`;
+    }
+
+    // ランキング読み込み
+    async function loadRankings() {
+      try {
+        const res = await fetch('/api/rankings/monthly');
+        const data = await res.json();
+        
+        renderRanking('ranking-reports', data.reports, '件');
+        renderRanking('ranking-companion', data.companion, '回');
+        renderRanking('ranking-targets', data.targets, '社');
+      } catch (error) {
+        console.error('ランキング読み込みエラー:', error);
+      }
+    }
+
+    function renderRanking(containerId, items, unit) {
+      const container = document.getElementById(containerId);
+      
+      if (!items || items.length === 0) {
+        container.innerHTML = '<div style="color: #94a3b8; font-size: 0.8rem;">データなし</div>';
+        return;
+      }
+
+      const medals = ['gold', 'silver', 'bronze'];
+      container.innerHTML = items.map((item, idx) => `
+        <div class="ranking-item">
+          <span class="ranking-medal ${medals[idx]}">${idx + 1}</span>
+          <span class="ranking-name">${escapeHtml(item.name)}</span>
+          <span class="ranking-value">${item.count}${unit}</span>
+        </div>
+      `).join('');
+    }
+
+    // タスク完了
+    async function completeTask(taskId) {
+      try {
+        const res = await fetch(`/api/tasks/${taskId}/complete`, {
+          method: 'POST'
+        });
+        
+        if (res.ok) {
+          // UIから削除
+          const el = document.getElementById(`task-alert-${taskId}`);
+          if (el) {
+            el.style.transition = 'opacity 0.3s';
+            el.style.opacity = '0';
+            setTimeout(() => el.remove(), 300);
+          }
+          // タスク数を更新
+          loadTaskAlerts();
+        } else {
+          alert('タスクの完了に失敗しました');
+        }
+      } catch (error) {
+        console.error('タスク完了エラー:', error);
+        alert('通信エラーが発生しました');
+      }
+    }
+
+    // 管理者パネル読み込み
+    async function loadManagerPanel() {
+      try {
+        const userRes = await fetch('/api/me');
+        const user = await userRes.json();
+        
+        if (user.role !== 'manager' && user.role !== 'admin') {
+          return; // 一般ユーザーは表示しない
+        }
+
+        document.getElementById('manager-panel').style.display = 'block';
+
+        // 確認待ち日報を取得
+        await loadPendingReports();
+        
+        // 長期未訪問顧客を取得
+        await loadLongUnvisitedCustomers();
+        
+        // チームサマリーを取得
+        await loadTeamSummary();
+
+      } catch (error) {
+        console.error('管理者パネル読み込みエラー:', error);
+      }
+    }
+
+    // 確認待ち日報
+    async function loadPendingReports() {
+      try {
+        const res = await fetch('/api/team-reports?status=submitted&limit=10');
+        const reports = await res.json();
+        
+        const container = document.getElementById('pending-reports-list');
+        const countEl = document.getElementById('pending-count');
+        
+        countEl.textContent = `${reports.length}件`;
+        
+        if (reports.length === 0) {
+          container.innerHTML = '<div style="text-align: center; color: #10b981; padding: 1rem; font-size: 0.85rem;">✓ すべて確認済みです</div>';
+          return;
+        }
+
+        container.innerHTML = reports.slice(0, 5).map(r => {
+          const date = new Date(r.report_date);
+          const dateStr = `${date.getMonth() + 1}/${date.getDate()}`;
+          return `
+            <div class="recent-item" style="padding: 0.5rem 0;">
+              <div style="flex: 1;">
+                <span style="font-weight: 500; color: #334155;">${escapeHtml(r.user_name)}</span>
+                <span style="color: #94a3b8; font-size: 0.8rem; margin-left: 0.5rem;">${dateStr}</span>
+              </div>
+              <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <button onclick="quickConfirm(${r.id})" class="btn btn-sm" style="padding: 0.2rem 0.6rem; font-size: 0.7rem; background: #10b981; color: white; border: none;">✓ 確認</button>
+                <a href="/report-detail.html?id=${r.id}" style="font-size: 0.75rem; color: #64748b;">詳細</a>
+              </div>
+            </div>
+          `;
+        }).join('');
+        
+        if (reports.length > 5) {
+          container.innerHTML += `<div style="font-size: 0.75rem; color: #64748b; text-align: right; padding-top: 0.5rem;">他 ${reports.length - 5}件</div>`;
+        }
+
+      } catch (error) {
+        console.error('確認待ち日報読み込みエラー:', error);
+      }
+    }
+
+    // クイック確認
+    async function quickConfirm(reportId) {
+      try {
+        const res = await fetch(`/api/reports/${reportId}/confirm`, {
+          method: 'POST'
+        });
+        
+        if (res.ok) {
+          loadPendingReports(); // リスト更新
+          loadTeamSummary(); // サマリー更新
+        } else {
+          const err = await res.json();
+          alert('確認処理に失敗しました: ' + (err.error || ''));
+        }
+      } catch (error) {
+        alert('通信エラーが発生しました');
+      }
+    }
+
+    // 長期未訪問顧客
+    async function loadLongUnvisitedCustomers() {
+      try {
+        const res = await fetch('/api/customers/long-unvisited?days=90&limit=5');
+        if (!res.ok) return;
+        
+        const customers = await res.json();
+        
+        if (customers.length === 0) return;
+
+        const section = document.getElementById('long-unvisited-section');
+        const container = document.getElementById('unvisited-list');
+        const countEl = document.getElementById('unvisited-count');
+        
+        section.style.display = 'block';
+        countEl.textContent = `${customers.length}件`;
+        
+        container.innerHTML = customers.map(c => {
+          const daysSince = c.days_since_visit || '90+';
+          return `
+            <div class="recent-item" style="padding: 0.5rem 0;">
+              <div style="flex: 1;">
+                <a href="/customer-history.html?type=customer&id=${c.id}" style="font-weight: 500; color: #334155; text-decoration: none;">${escapeHtml(c.name)}</a>
+                <span style="color: #f59e0b; font-size: 0.75rem; margin-left: 0.5rem;">${daysSince}日</span>
+              </div>
+              <span style="font-size: 0.75rem; color: #94a3b8;">${escapeHtml(c.sales_rep_name || '-')}</span>
+            </div>
+          `;
+        }).join('');
+
+      } catch (error) {
+        console.error('長期未訪問顧客読み込みエラー:', error);
+      }
+    }
+
+    // チームサマリー
+    async function loadTeamSummary() {
+      try {
+        // 今週の範囲
+        const now = new Date();
+        const dayOfWeek = now.getDay();
+        const monday = new Date(now);
+        monday.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+        const from = monday.toISOString().split('T')[0];
+        const to = now.toISOString().split('T')[0];
+
+        const res = await fetch(`/api/team-reports?from=${from}&to=${to}`);
+        const reports = await res.json();
+        
+        // 統計計算
+        const totalReports = reports.length;
+        const totalVisits = reports.reduce((sum, r) => sum + (r.visits ? r.visits.length : 0), 0);
+        const confirmed = reports.filter(r => r.status === 'confirmed').length;
+        const pending = reports.filter(r => r.status === 'submitted').length;
+        
+        document.getElementById('team-reports-count').textContent = totalReports;
+        document.getElementById('team-visits-count').textContent = totalVisits;
+        document.getElementById('team-confirmed-count').textContent = confirmed;
+        document.getElementById('team-pending-count').textContent = pending;
+
+        // メンバー別アクティビティ
+        const byUser = {};
+        reports.forEach(r => {
+          if (!byUser[r.user_name]) {
+            byUser[r.user_name] = { reports: 0, visits: 0 };
+          }
+          byUser[r.user_name].reports++;
+          byUser[r.user_name].visits += r.visits ? r.visits.length : 0;
+        });
+
+        const sortedUsers = Object.entries(byUser).sort((a, b) => b[1].visits - a[1].visits);
+        
+        if (sortedUsers.length > 0) {
+          document.getElementById('team-member-activity').innerHTML = `
+            <div style="font-size: 0.75rem; color: #94a3b8; margin-bottom: 0.5rem;">メンバー別</div>
+            ${sortedUsers.slice(0, 5).map(([name, data]) => `
+              <div style="display: flex; justify-content: space-between; padding: 0.25rem 0; font-size: 0.8rem;">
+                <span>${escapeHtml(name)}</span>
+                <span style="color: #64748b;">日報 ${data.reports}件 / 訪問 ${data.visits}件</span>
+              </div>
+            `).join('')}
+          `;
+        }
+
+      } catch (error) {
+        console.error('チームサマリー読み込みエラー:', error);
+      }
+    }
+  </script>
+</body>
+</html>

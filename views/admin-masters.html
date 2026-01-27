@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>マスター管理 - 営業日報システム</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .tab-container {
+      display: flex;
+      gap: 0;
+      margin-bottom: 1.5rem;
+      border-bottom: 2px solid #e5e7eb;
+    }
+    .tab-btn {
+      padding: 0.75rem 1.5rem;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      cursor: pointer;
+      font-size: 0.95rem;
+      color: #64748b;
+      transition: all 0.2s;
+    }
+    .tab-btn:hover {
+      color: #3b82f6;
+    }
+    .tab-btn.active {
+      color: #3b82f6;
+      border-bottom-color: #3b82f6;
+      font-weight: 600;
+    }
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+    }
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .search-box {
+      display: flex;
+      gap: 0.5rem;
+      flex: 1;
+      max-width: 400px;
+    }
+    .search-box input {
+      flex: 1;
+    }
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+    .data-table th,
+    .data-table td {
+      padding: 0.625rem 0.75rem;
+      text-align: left;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .data-table th {
+      background: #f8fafc;
+      font-weight: 600;
+      color: #64748b;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+    }
+    .data-table tbody tr:hover {
+      background: #f8fafc;
+    }
+    .action-btns {
+      display: flex;
+      gap: 0.25rem;
+    }
+    .action-btns button {
+      padding: 0.25rem 0.5rem;
+      font-size: 0.75rem;
+    }
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .modal.hidden { display: none; }
+    .modal-content {
+      background: white;
+      border-radius: 0.5rem;
+      width: 90%;
+      max-width: 500px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .modal-header h3 { margin: 0; }
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: #64748b;
+    }
+    .modal-body {
+      padding: 1rem;
+    }
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.5rem;
+      padding: 1rem;
+      border-top: 1px solid #e5e7eb;
+    }
+    .pagination {
+      display: flex;
+      justify-content: center;
+      gap: 0.25rem;
+      margin-top: 1rem;
+    }
+    .pagination button {
+      padding: 0.375rem 0.75rem;
+      border: 1px solid #e5e7eb;
+      background: white;
+      cursor: pointer;
+      border-radius: 0.25rem;
+    }
+    .pagination button:hover {
+      background: #f1f5f9;
+    }
+    .pagination button.active {
+      background: #3b82f6;
+      color: white;
+      border-color: #3b82f6;
+    }
+    .pagination button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .count-badge {
+      font-size: 0.75rem;
+      background: #e5e7eb;
+      padding: 0.125rem 0.5rem;
+      border-radius: 9999px;
+      margin-left: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-content">
+      <a href="/dashboard.html" class="logo">営業日報システム</a>
+      <nav class="nav" id="main-nav">
+        <a href="/dashboard.html" class="nav-link">ホーム</a>
+        <a href="/report-list.html" class="nav-link">日報一覧</a>
+        <a href="/calendar.html" class="nav-link">カレンダー</a>
+      </nav>
+      <div class="user-info">
+        <span class="user-name" id="user-name">-</span>
+        <button class="btn btn-outline btn-sm btn-logout" onclick="logout()">ログアウト</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <h1 class="page-title">📋 マスター管理</h1>
+
+    <div class="tab-container">
+      <button class="tab-btn active" onclick="switchTab('customers')">🏢 得意先<span class="count-badge" id="customer-count">-</span></button>
+      <button class="tab-btn" onclick="switchTab('suppliers')">🚚 仕入先<span class="count-badge" id="supplier-count">-</span></button>
+      <button class="tab-btn" onclick="switchTab('manufacturers')">🏭 メーカー<span class="count-badge" id="manufacturer-count">-</span></button>
+    </div>
+
+    <!-- 得意先タブ -->
+    <div id="tab-customers" class="tab-content active">
+      <div class="card">
+        <div class="toolbar">
+          <div class="search-box">
+            <input type="text" id="customer-search" class="form-input" placeholder="コード・名前で検索..." oninput="searchCustomers()">
+          </div>
+          <button class="btn btn-primary" onclick="openCustomerModal()">＋ 新規追加</button>
+        </div>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>コード</th>
+                <th>得意先名</th>
+                <th>担当者</th>
+                <th>住所</th>
+                <th>電話</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="customer-table-body"></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="customer-pagination"></div>
+      </div>
+    </div>
+
+    <!-- 仕入先タブ -->
+    <div id="tab-suppliers" class="tab-content">
+      <div class="card">
+        <div class="toolbar">
+          <div class="search-box">
+            <input type="text" id="supplier-search" class="form-input" placeholder="コード・名前で検索..." oninput="searchSuppliers()">
+          </div>
+          <button class="btn btn-primary" onclick="openSupplierModal()">＋ 新規追加</button>
+        </div>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>コード</th>
+                <th>仕入先名</th>
+                <th>住所</th>
+                <th>電話</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="supplier-table-body"></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="supplier-pagination"></div>
+      </div>
+    </div>
+
+    <!-- メーカータブ -->
+    <div id="tab-manufacturers" class="tab-content">
+      <div class="card">
+        <div class="toolbar">
+          <div class="search-box">
+            <input type="text" id="manufacturer-search" class="form-input" placeholder="名前で検索..." oninput="searchManufacturers()">
+          </div>
+          <button class="btn btn-primary" onclick="openManufacturerModal()">＋ 新規追加</button>
+        </div>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>メーカー名</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="manufacturer-table-body"></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="manufacturer-pagination"></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- 得意先編集モーダル -->
+  <div id="customer-modal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="customer-modal-title">得意先を追加</h3>
+        <button class="modal-close" onclick="closeCustomerModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="customer-id">
+        <div class="form-group">
+          <label class="form-label required">得意先コード</label>
+          <input type="text" id="customer-code" class="form-input" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label required">得意先名</label>
+          <input type="text" id="customer-name" class="form-input" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">担当営業</label>
+          <select id="customer-assigned-user" class="form-select">
+            <option value="">未設定</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">住所</label>
+          <input type="text" id="customer-address" class="form-input">
+        </div>
+        <div class="form-group">
+          <label class="form-label">電話番号</label>
+          <input type="text" id="customer-phone" class="form-input">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeCustomerModal()">キャンセル</button>
+        <button class="btn btn-primary" onclick="saveCustomer()">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 仕入先編集モーダル -->
+  <div id="supplier-modal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="supplier-modal-title">仕入先を追加</h3>
+        <button class="modal-close" onclick="closeSupplierModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="supplier-id">
+        <div class="form-group">
+          <label class="form-label required">仕入先コード</label>
+          <input type="text" id="supplier-code" class="form-input" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label required">仕入先名</label>
+          <input type="text" id="supplier-name" class="form-input" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">住所</label>
+          <input type="text" id="supplier-address" class="form-input">
+        </div>
+        <div class="form-group">
+          <label class="form-label">電話番号</label>
+          <input type="text" id="supplier-phone" class="form-input">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeSupplierModal()">キャンセル</button>
+        <button class="btn btn-primary" onclick="saveSupplier()">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- メーカー編集モーダル -->
+  <div id="manufacturer-modal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="manufacturer-modal-title">メーカーを追加</h3>
+        <button class="modal-close" onclick="closeManufacturerModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="manufacturer-id">
+        <div class="form-group">
+          <label class="form-label required">メーカー名</label>
+          <input type="text" id="manufacturer-name" class="form-input" required>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeManufacturerModal()">キャンセル</button>
+        <button class="btn btn-primary" onclick="saveManufacturer()">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/common.js"></script>
+  <script>
+    let allCustomers = [];
+    let allSuppliers = [];
+    let allManufacturers = [];
+    let allUsers = [];
+    
+    const PAGE_SIZE = 20;
+    let customerPage = 1;
+    let supplierPage = 1;
+    let manufacturerPage = 1;
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      const user = await checkAuth();
+      if (!user) return;
+      if (user.role !== 'admin') {
+        alert('管理者権限が必要です');
+        window.location.href = '/dashboard.html';
+        return;
+      }
+
+      await loadAllData();
+    });
+
+    async function loadAllData() {
+      try {
+        const [custRes, suppRes, mfrRes, usersRes] = await Promise.all([
+          fetch('/api/masters/customers'),
+          fetch('/api/masters/suppliers'),
+          fetch('/api/masters/manufacturers'),
+          fetch('/api/users/all')
+        ]);
+        
+        allCustomers = await custRes.json();
+        allSuppliers = await suppRes.json();
+        allManufacturers = await mfrRes.json();
+        allUsers = await usersRes.json();
+
+        document.getElementById('customer-count').textContent = allCustomers.length;
+        document.getElementById('supplier-count').textContent = allSuppliers.length;
+        document.getElementById('manufacturer-count').textContent = allManufacturers.length;
+
+        // 担当者セレクトを更新
+        const select = document.getElementById('customer-assigned-user');
+        select.innerHTML = '<option value="">未設定</option>' + 
+          allUsers.map(u => `<option value="${u.id}">${escapeHtml(u.name)}</option>`).join('');
+
+        renderCustomers();
+        renderSuppliers();
+        renderManufacturers();
+      } catch (error) {
+        console.error('データ読み込みエラー:', error);
+      }
+    }
+
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+      
+      document.querySelector(`[onclick="switchTab('${tab}')"]`).classList.add('active');
+      document.getElementById(`tab-${tab}`).classList.add('active');
+    }
+
+    // ========== 得意先 ==========
+    function searchCustomers() {
+      customerPage = 1;
+      renderCustomers();
+    }
+
+    function renderCustomers() {
+      const search = document.getElementById('customer-search').value.toLowerCase();
+      let filtered = allCustomers;
+      
+      if (search) {
+        filtered = allCustomers.filter(c => 
+          (c.customer_code || '').toLowerCase().includes(search) ||
+          (c.name || '').toLowerCase().includes(search)
+        );
+      }
+
+      const start = (customerPage - 1) * PAGE_SIZE;
+      const pageData = filtered.slice(start, start + PAGE_SIZE);
+
+      document.getElementById('customer-table-body').innerHTML = pageData.map(c => `
+        <tr>
+          <td>${escapeHtml(c.customer_code || '')}</td>
+          <td>${escapeHtml(c.name || '')}</td>
+          <td>${escapeHtml(c.assigned_user_name || c.sales_rep_name || '-')}</td>
+          <td>${escapeHtml(c.address1 || '')}</td>
+          <td>${escapeHtml(c.phone || '')}</td>
+          <td class="action-btns">
+            <button class="btn btn-sm btn-outline" onclick="editCustomer(${c.id})">編集</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteCustomer(${c.id})">削除</button>
+          </td>
+        </tr>
+      `).join('') || '<tr><td colspan="6" style="text-align:center;color:#64748b;">データがありません</td></tr>';
+
+      renderPagination('customer', filtered.length);
+    }
+
+    function openCustomerModal(id = null) {
+      document.getElementById('customer-id').value = '';
+      document.getElementById('customer-code').value = '';
+      document.getElementById('customer-name').value = '';
+      document.getElementById('customer-assigned-user').value = '';
+      document.getElementById('customer-address').value = '';
+      document.getElementById('customer-phone').value = '';
+      document.getElementById('customer-modal-title').textContent = '得意先を追加';
+      document.getElementById('customer-modal').classList.remove('hidden');
+    }
+
+    function editCustomer(id) {
+      const c = allCustomers.find(x => x.id === id);
+      if (!c) return;
+
+      document.getElementById('customer-id').value = c.id;
+      document.getElementById('customer-code').value = c.customer_code || '';
+      document.getElementById('customer-name').value = c.name || '';
+      document.getElementById('customer-assigned-user').value = c.assigned_user_id || '';
+      document.getElementById('customer-address').value = c.address1 || '';
+      document.getElementById('customer-phone').value = c.phone || '';
+      document.getElementById('customer-modal-title').textContent = '得意先を編集';
+      document.getElementById('customer-modal').classList.remove('hidden');
+    }
+
+    function closeCustomerModal() {
+      document.getElementById('customer-modal').classList.add('hidden');
+    }
+
+    async function saveCustomer() {
+      const id = document.getElementById('customer-id').value;
+      const data = {
+        customer_code: document.getElementById('customer-code').value.trim(),
+        name: document.getElementById('customer-name').value.trim(),
+        assigned_user_id: document.getElementById('customer-assigned-user').value || null,
+        address1: document.getElementById('customer-address').value.trim(),
+        phone: document.getElementById('customer-phone').value.trim()
+      };
+
+      if (!data.customer_code || !data.name) {
+        alert('コードと名前は必須です');
+        return;
+      }
+
+      try {
+        const url = id ? `/api/masters/customers/${id}` : '/api/masters/customers';
+        const method = id ? 'PUT' : 'POST';
+        
+        const res = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error);
+        }
+
+        closeCustomerModal();
+        await loadAllData();
+        alert('保存しました');
+      } catch (error) {
+        alert('エラー: ' + error.message);
+      }
+    }
+
+    async function deleteCustomer(id) {
+      if (!confirm('この得意先を削除しますか？')) return;
+
+      try {
+        const res = await fetch(`/api/masters/customers/${id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('削除に失敗しました');
+        await loadAllData();
+      } catch (error) {
+        alert('エラー: ' + error.message);
+      }
+    }
+
+    // ========== 仕入先 ==========
+    function searchSuppliers() {
+      supplierPage = 1;
+      renderSuppliers();
+    }
+
+    function renderSuppliers() {
+      const search = document.getElementById('supplier-search').value.toLowerCase();
+      let filtered = allSuppliers;
+      
+      if (search) {
+        filtered = allSuppliers.filter(s => 
+          (s.supplier_code || '').toLowerCase().includes(search) ||
+          (s.name || '').toLowerCase().includes(search)
+        );
+      }
+
+      const start = (supplierPage - 1) * PAGE_SIZE;
+      const pageData = filtered.slice(start, start + PAGE_SIZE);
+
+      document.getElementById('supplier-table-body').innerHTML = pageData.map(s => `
+        <tr>
+          <td>${escapeHtml(s.supplier_code || '')}</td>
+          <td>${escapeHtml(s.name || '')}</td>
+          <td>${escapeHtml(s.address1 || '')}</td>
+          <td>${escapeHtml(s.phone || '')}</td>
+          <td class="action-btns">
+            <button class="btn btn-sm btn-outline" onclick="editSupplier(${s.id})">編集</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteSupplier(${s.id})">削除</button>
+          </td>
+        </tr>
+      `).join('') || '<tr><td colspan="5" style="text-align:center;color:#64748b;">データがありません</td></tr>';
+
+      renderPagination('supplier', filtered.length);
+    }
+
+    function openSupplierModal() {
+      document.getElementById('supplier-id').value = '';
+      document.getElementById('supplier-code').value = '';
+      document.getElementById('supplier-name').value = '';
+      document.getElementById('supplier-address').value = '';
+      document.getElementById('supplier-phone').value = '';
+      document.getElementById('supplier-modal-title').textContent = '仕入先を追加';
+      document.getElementById('supplier-modal').classList.remove('hidden');
+    }
+
+    function editSupplier(id) {
+      const s = allSuppliers.find(x => x.id === id);
+      if (!s) return;
+
+      document.getElementById('supplier-id').value = s.id;
+      document.getElementById('supplier-code').value = s.supplier_code || '';
+      document.getElementById('supplier-name').value = s.name || '';
+      document.getElementById('supplier-address').value = s.address1 || '';
+      document.getElementById('supplier-phone').value = s.phone || '';
+      document.getElementById('supplier-modal-title').textContent = '仕入先を編集';
+      document.getElementById('supplier-modal').classList.remove('hidden');
+    }
+
+    function closeSupplierModal() {
+      document.getElementById('supplier-modal').classList.add('hidden');
+    }
+
+    async function saveSupplier() {
+      const id = document.getElementById('supplier-id').value;
+      const data = {
+        supplier_code: document.getElementById('supplier-code').value.trim(),
+        name: document.getElementById('supplier-name').value.trim(),
+        address1: document.getElementById('supplier-address').value.trim(),
+        phone: document.getElementById('supplier-phone').value.trim()
+      };
+
+      if (!data.supplier_code || !data.name) {
+        alert('コードと名前は必須です');
+        return;
+      }
+
+      try {
+        const url = id ? `/api/masters/suppliers/${id}` : '/api/masters/suppliers';
+        const method = id ? 'PUT' : 'POST';
+        
+        const res = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error);
+        }
+
+        closeSupplierModal();
+        await loadAllData();
+        alert('保存しました');
+      } catch (error) {
+        alert('エラー: ' + error.message);
+      }
+    }
+
+    async function deleteSupplier(id) {
+      if (!confirm('この仕入先を削除しますか？')) return;
+
+      try {
+        const res = await fetch(`/api/masters/suppliers/${id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('削除に失敗しました');
+        await loadAllData();
+      } catch (error) {
+        alert('エラー: ' + error.message);
+      }
+    }
+
+    // ========== メーカー ==========
+    function searchManufacturers() {
+      manufacturerPage = 1;
+      renderManufacturers();
+    }
+
+    function renderManufacturers() {
+      const search = document.getElementById('manufacturer-search').value.toLowerCase();
+      let filtered = allManufacturers;
+      
+      if (search) {
+        filtered = allManufacturers.filter(m => 
+          (m.name || '').toLowerCase().includes(search)
+        );
+      }
+
+      const start = (manufacturerPage - 1) * PAGE_SIZE;
+      const pageData = filtered.slice(start, start + PAGE_SIZE);
+
+      document.getElementById('manufacturer-table-body').innerHTML = pageData.map(m => `
+        <tr>
+          <td>${escapeHtml(m.name || '')}</td>
+          <td class="action-btns">
+            <button class="btn btn-sm btn-outline" onclick="editManufacturer(${m.id})">編集</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteManufacturer(${m.id})">削除</button>
+          </td>
+        </tr>
+      `).join('') || '<tr><td colspan="2" style="text-align:center;color:#64748b;">データがありません</td></tr>';
+
+      renderPagination('manufacturer', filtered.length);
+    }
+
+    function openManufacturerModal() {
+      document.getElementById('manufacturer-id').value = '';
+      document.getElementById('manufacturer-name').value = '';
+      document.getElementById('manufacturer-modal-title').textContent = 'メーカーを追加';
+      document.getElementById('manufacturer-modal').classList.remove('hidden');
+    }
+
+    function editManufacturer(id) {
+      const m = allManufacturers.find(x => x.id === id);
+      if (!m) return;
+
+      document.getElementById('manufacturer-id').value = m.id;
+      document.getElementById('manufacturer-name').value = m.name || '';
+      document.getElementById('manufacturer-modal-title').textContent = 'メーカーを編集';
+      document.getElementById('manufacturer-modal').classList.remove('hidden');
+    }
+
+    function closeManufacturerModal() {
+      document.getElementById('manufacturer-modal').classList.add('hidden');
+    }
+
+    async function saveManufacturer() {
+      const id = document.getElementById('manufacturer-id').value;
+      const data = {
+        name: document.getElementById('manufacturer-name').value.trim()
+      };
+
+      if (!data.name) {
+        alert('メーカー名は必須です');
+        return;
+      }
+
+      try {
+        const url = id ? `/api/masters/manufacturers/${id}` : '/api/masters/manufacturers';
+        const method = id ? 'PUT' : 'POST';
+        
+        const res = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error);
+        }
+
+        closeManufacturerModal();
+        await loadAllData();
+        alert('保存しました');
+      } catch (error) {
+        alert('エラー: ' + error.message);
+      }
+    }
+
+    async function deleteManufacturer(id) {
+      if (!confirm('このメーカーを削除しますか？')) return;
+
+      try {
+        const res = await fetch(`/api/masters/manufacturers/${id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('削除に失敗しました');
+        await loadAllData();
+      } catch (error) {
+        alert('エラー: ' + error.message);
+      }
+    }
+
+    // ========== ページネーション ==========
+    function renderPagination(type, total) {
+      const totalPages = Math.ceil(total / PAGE_SIZE);
+      let currentPage;
+      
+      if (type === 'customer') currentPage = customerPage;
+      else if (type === 'supplier') currentPage = supplierPage;
+      else currentPage = manufacturerPage;
+
+      const container = document.getElementById(`${type}-pagination`);
+      
+      if (totalPages <= 1) {
+        container.innerHTML = '';
+        return;
+      }
+
+      let html = `
+        <button onclick="goToPage('${type}', ${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>◀</button>
+      `;
+
+      for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+          html += `<button class="${i === currentPage ? 'active' : ''}" onclick="goToPage('${type}', ${i})">${i}</button>`;
+        } else if (i === currentPage - 3 || i === currentPage + 3) {
+          html += '<button disabled>...</button>';
+        }
+      }
+
+      html += `
+        <button onclick="goToPage('${type}', ${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>▶</button>
+      `;
+
+      container.innerHTML = html;
+    }
+
+    function goToPage(type, page) {
+      if (type === 'customer') {
+        customerPage = page;
+        renderCustomers();
+      } else if (type === 'supplier') {
+        supplierPage = page;
+        renderSuppliers();
+      } else {
+        manufacturerPage = page;
+        renderManufacturers();
+      }
+    }
+  </script>
+</body>
+</html>

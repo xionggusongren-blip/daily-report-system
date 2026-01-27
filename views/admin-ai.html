@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI設定 - 営業日報システム</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .settings-card {
+      max-width: 600px;
+    }
+    .status-badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .status-badge.enabled {
+      background: #dcfce7;
+      color: #166534;
+    }
+    .status-badge.disabled {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+    .api-key-display {
+      font-family: monospace;
+      background: #f1f5f9;
+      padding: 0.5rem;
+      border-radius: 0.25rem;
+      font-size: 0.875rem;
+    }
+    .help-text {
+      font-size: 0.8rem;
+      color: #64748b;
+      margin-top: 0.25rem;
+    }
+    .test-area {
+      margin-top: 2rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid #e5e7eb;
+    }
+    .test-result {
+      margin-top: 1rem;
+      padding: 1rem;
+      background: #f8fafc;
+      border-radius: 0.5rem;
+      white-space: pre-wrap;
+      font-size: 0.875rem;
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-content">
+      <a href="/dashboard.html" class="logo">営業日報システム</a>
+      <nav class="nav" id="main-nav">
+        <a href="/dashboard.html" class="nav-link">ホーム</a>
+        <a href="/report-list.html" class="nav-link">日報一覧</a>
+        <a href="/calendar.html" class="nav-link">カレンダー</a>
+      </nav>
+      <div class="user-info">
+        <span class="user-name" id="user-name">-</span>
+        <button class="btn btn-outline btn-sm btn-logout" onclick="logout()">ログアウト</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <h1 class="page-title">🤖 AI設定</h1>
+    <p style="color: #64748b; margin-bottom: 1.5rem;">
+      Claude APIを使用して、メモから日報を自動生成する機能を設定します。
+    </p>
+
+    <div class="card settings-card">
+      <h2 class="card-title">API設定</h2>
+      
+      <div class="form-group">
+        <label class="form-label">現在の状態</label>
+        <div>
+          <span class="status-badge disabled" id="status-badge">無効</span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">APIキー</label>
+        <div id="current-key" class="api-key-display" style="margin-bottom: 0.5rem;">未設定</div>
+        <input type="password" id="api_key" class="form-input" placeholder="sk-ant-api03-...">
+        <div class="help-text">
+          Anthropic ConsoleでAPIキーを取得してください。<br>
+          <a href="https://console.anthropic.com/" target="_blank" style="color: #3b82f6;">https://console.anthropic.com/</a>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">モデル</label>
+        <select id="model" class="form-select">
+          <option value="claude-3-5-haiku-20241022">Claude Haiku 3.5 (推奨・低コスト)</option>
+          <option value="claude-sonnet-4-20250514">Claude Sonnet 4 (高品質)</option>
+        </select>
+        <div class="help-text">Sonnetは高品質、Haikuは低コストで高速です</div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">
+          <input type="checkbox" id="enabled"> AI機能を有効にする
+        </label>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">カスタムプロンプト（任意）</label>
+        <textarea id="custom_prompt" class="form-textarea" rows="6" 
+          placeholder="デフォルトのプロンプトを上書きする場合に入力&#10;空欄の場合はデフォルトが使用されます"></textarea>
+        <div class="help-text">
+          日報生成時のAIへの指示をカスタマイズできます
+          <button type="button" onclick="insertSamplePrompt()" style="margin-left: 0.5rem; font-size: 0.75rem; padding: 0.2rem 0.5rem; background: #e2e8f0; border: none; border-radius: 0.25rem; cursor: pointer;">サンプルを挿入</button>
+        </div>
+      </div>
+
+      <div class="btn-group">
+        <button class="btn btn-primary" onclick="saveSettings()">設定を保存</button>
+      </div>
+
+      <!-- テスト機能 -->
+      <div class="test-area">
+        <h3 style="margin-bottom: 1rem;">動作テスト</h3>
+        <div class="form-group">
+          <label class="form-label">
+            テスト用メモ
+            <button type="button" onclick="insertSampleMemo()" style="margin-left: 0.5rem; font-size: 0.75rem; padding: 0.2rem 0.5rem; background: #e2e8f0; border: none; border-radius: 0.25rem; cursor: pointer;">サンプルを挿入</button>
+          </label>
+          <textarea id="test-memo" class="form-textarea" rows="4" placeholder="例：滝沢電機訪問、新製品紹介、見積依頼あり"></textarea>
+        </div>
+        <button class="btn btn-outline" onclick="testGenerate()">テスト生成</button>
+        <div id="test-result" class="test-result" style="display: none;"></div>
+      </div>
+    </div>
+
+    <div class="card settings-card" style="margin-top: 1.5rem;">
+      <h2 class="card-title">💡 使い方</h2>
+      <div style="font-size: 0.9rem; color: #475569; line-height: 1.8;">
+        <p><strong>1. APIキーを設定</strong></p>
+        <p style="margin-left: 1rem; margin-bottom: 1rem;">Anthropic Consoleでアカウントを作成し、APIキーを取得してください。</p>
+        
+        <p><strong>2. 機能を有効化</strong></p>
+        <p style="margin-left: 1rem; margin-bottom: 1rem;">「AI機能を有効にする」にチェックを入れて保存します。</p>
+        
+        <p><strong>3. 営業担当が利用</strong></p>
+        <p style="margin-left: 1rem;">日報作成画面で「✨ AIで生成」ボタンが表示されます。<br>
+        メモを入力するだけで、日報形式のテキストが自動生成されます。</p>
+      </div>
+    </div>
+
+    <div class="card settings-card" style="margin-top: 1.5rem;">
+      <h2 class="card-title">💰 コストの目安</h2>
+      <div style="font-size: 0.9rem; color: #475569;">
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr style="border-bottom: 1px solid #e5e7eb;">
+            <th style="text-align: left; padding: 0.5rem 0;">モデル</th>
+            <th style="text-align: right; padding: 0.5rem 0;">1回あたり</th>
+            <th style="text-align: right; padding: 0.5rem 0;">月100回</th>
+          </tr>
+          <tr style="border-bottom: 1px solid #e5e7eb;">
+            <td style="padding: 0.5rem 0;">Sonnet 4</td>
+            <td style="text-align: right;">約1-2円</td>
+            <td style="text-align: right;">約100-200円</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.5rem 0;">Haiku 3.5</td>
+            <td style="text-align: right;">約0.2円</td>
+            <td style="text-align: right;">約20円</td>
+          </tr>
+        </table>
+        <p style="margin-top: 0.75rem; font-size: 0.8rem; color: #94a3b8;">
+          ※ 実際のコストは入出力の文字数により変動します
+        </p>
+      </div>
+    </div>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const user = await checkAuth();
+      if (!user) return;
+      if (user.role !== 'admin') {
+        alert('管理者権限が必要です');
+        window.location.href = '/dashboard.html';
+        return;
+      }
+
+      await loadSettings();
+    });
+
+    async function loadSettings() {
+      try {
+        const res = await fetch('/api/ai-settings');
+        const settings = await res.json();
+        
+        // ステータス表示
+        const badge = document.getElementById('status-badge');
+        if (settings.enabled) {
+          badge.textContent = '有効';
+          badge.className = 'status-badge enabled';
+        } else {
+          badge.textContent = '無効';
+          badge.className = 'status-badge disabled';
+        }
+        
+        // APIキー表示
+        const keyDisplay = document.getElementById('current-key');
+        if (settings.has_api_key) {
+          keyDisplay.textContent = settings.api_key_masked;
+        } else {
+          keyDisplay.textContent = '未設定';
+        }
+        
+        // フォームに反映
+        document.getElementById('model').value = settings.model || 'claude-3-5-haiku-20241022';
+        document.getElementById('enabled').checked = settings.enabled === 1;
+        document.getElementById('custom_prompt').value = settings.custom_prompt || '';
+        
+      } catch (error) {
+        console.error('設定読み込みエラー:', error);
+      }
+    }
+
+    async function saveSettings() {
+      const data = {
+        api_key: document.getElementById('api_key').value || null,
+        model: document.getElementById('model').value,
+        enabled: document.getElementById('enabled').checked,
+        custom_prompt: document.getElementById('custom_prompt').value
+      };
+      
+      try {
+        const res = await fetch('/api/ai-settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        
+        if (res.ok) {
+          alert('設定を保存しました');
+          document.getElementById('api_key').value = '';
+          await loadSettings();
+        } else {
+          const err = await res.json();
+          alert('エラー: ' + err.error);
+        }
+      } catch (error) {
+        alert('保存に失敗しました');
+      }
+    }
+
+    async function testGenerate() {
+      const memo = document.getElementById('test-memo').value;
+      if (!memo) {
+        alert('テスト用メモを入力してください');
+        return;
+      }
+      
+      const resultDiv = document.getElementById('test-result');
+      resultDiv.style.display = 'block';
+      resultDiv.textContent = '生成中...';
+      
+      try {
+        const res = await fetch('/api/ai/generate-report', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ memo })
+        });
+        
+        const data = await res.json();
+        
+        if (res.ok && data.generated) {
+          resultDiv.textContent = '【生成結果】\n\n' + data.generated.work_content;
+        } else {
+          resultDiv.textContent = 'エラー: ' + (data.error || '生成に失敗しました');
+        }
+      } catch (error) {
+        resultDiv.textContent = 'エラー: ' + error.message;
+      }
+    }
+
+    // サンプルプロンプトを挿入
+    function insertSamplePrompt() {
+      const sample = `あなたは電子部品商社の営業日報作成を支援するアシスタントです。
+営業担当者のメモから訪問先（会社名）と同行者を抽出し、詳細な商談内容を整理してJSONで出力してください。
+
+【タスク】
+1. メモの中から「訪問した会社」「商談した会社」を見つける
+2. 各会社について、メモに書かれた内容を詳しく整理する
+3. 同行者がいれば抽出する（「○○部長と」「○○課長と」「○○と同行」など）
+4. JSON形式で出力する
+
+【JSON形式】必ずこの形式で出力してください：
+{"extracted_visits":[{"company_name":"会社名","memo":"商談内容","companions":["同行者名"]}]}
+
+【会社名の抽出ルール】
+- 「〇〇電機」「〇〇電気」「〇〇工業」「〇〇産業」「〇〇商事」などは会社名
+- 「〇〇様」「〇〇さん」の「〇〇」が会社名の可能性が高い
+- 「訪問」「商談」「打合せ」「ヒアリング」の対象が会社名
+- 「株式会社」「（株）」「㈱」は除去してシンプルな名前にする
+
+【同行者の抽出ルール】
+- 「○○部長と」「○○課長と同行」などの○○は同行者
+- 役職は除去して名前だけ抽出（「岡村部長」→「岡村」）
+- 自社社員の名前のみ抽出（相手先の担当者名は含めない）
+
+【商談内容（memo）の書き方 - 重要】
+★ メモの情報量に応じて文章量を調整してください
+★ 箇条書きのメモは、すべての項目を文章化して含めてください
+★ 具体的な数字、製品名、担当者名、課題、今後の予定などがあれば必ず含めてください
+★ 「〜しました。」「〜の予定です。」「〜とのことです。」のように敬体で書いてください
+★ メモにない事実は追加しないでください
+
+【文章量の目安】
+- メモが短い（1〜2項目）→ 1〜2文で簡潔に
+- メモが中程度（3〜5項目）→ 3〜5文で詳しく
+- メモが長い（6項目以上）→ すべての情報を網羅して詳細に記述
+
+【重要】
+- 必ずJSON形式のみを出力（説明文は不要）
+- 会社名が1つも見つからない場合は {"extracted_visits":[]} を出力
+- companionsは配列（同行者がいない場合は空配列[]）
+- メモの情報を省略せず、すべて商談内容に含めてください`;
+      document.getElementById('custom_prompt').value = sample;
+    }
+
+    // サンプルメモを挿入
+    function insertSampleMemo() {
+      const sample = `ミスミ訪問　岡村部長と同行　小林様面談
+ミスミブランド窓口拡大　正規メーカーと別管理で販売
+ナイロンコネクタ中心　20-30%確保目標
+サトーパーツは非在庫からスタート
+AWG0袋入れ課題　イワセAWG0サンプル希望
+年間3500万10%ダウン見込み　価格納期MOQ確認要
+最終判断は甲村様`;
+      document.getElementById('test-memo').value = sample;
+    }
+  </script>
+</body>
+</html>

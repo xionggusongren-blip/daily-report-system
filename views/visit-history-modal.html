@@ -1,0 +1,232 @@
+<!-- 訪問履歴モーダル（他のページにインクルードして使用） -->
+<div id="visit-history-modal" class="modal" style="display: none;">
+  <div class="modal-content" style="max-width: 900px;">
+    <div class="modal-header">
+      <h3 id="visit-history-title">訪問履歴</h3>
+      <button class="btn btn-secondary" onclick="closeVisitHistoryModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div id="visit-history-loading" style="text-align: center; padding: 40px;">
+        読み込み中...
+      </div>
+      <div id="visit-history-content" style="display: none;">
+        <div id="visit-history-info" style="margin-bottom: 20px; padding: 15px; background: #f8fafc; border-radius: 8px;">
+        </div>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>訪問日</th>
+              <th>担当者</th>
+              <th>部署</th>
+              <th>目的</th>
+              <th>商談内容</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="visit-history-list">
+          </tbody>
+        </table>
+        <div id="visit-history-empty" style="display: none; text-align: center; padding: 40px; color: #64748b;">
+          訪問履歴がありません
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 12px;
+  width: 90%;
+  max-height: 80vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.modal-body {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.customer-link, .supplier-link {
+  color: #3b82f6;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.customer-link:hover, .supplier-link:hover {
+  color: #1d4ed8;
+}
+</style>
+
+<script>
+// 訪問履歴モーダルを開く（顧客）
+async function openCustomerHistory(customerId, customerName) {
+  const modal = document.getElementById('visit-history-modal');
+  const loading = document.getElementById('visit-history-loading');
+  const content = document.getElementById('visit-history-content');
+  const title = document.getElementById('visit-history-title');
+  const info = document.getElementById('visit-history-info');
+  const list = document.getElementById('visit-history-list');
+  const empty = document.getElementById('visit-history-empty');
+  
+  modal.style.display = 'flex';
+  loading.style.display = 'block';
+  content.style.display = 'none';
+  title.textContent = `${customerName} - 訪問履歴`;
+  
+  try {
+    const res = await fetch(`/api/customers/${customerId}/visits`);
+    const data = await res.json();
+    
+    loading.style.display = 'none';
+    content.style.display = 'block';
+    
+    info.innerHTML = `
+      <div style="display: flex; gap: 30px; flex-wrap: wrap;">
+        <div><strong>顧客名:</strong> ${escapeHtml(data.customer.name)}</div>
+        ${data.customer.code ? `<div><strong>顧客コード:</strong> ${escapeHtml(data.customer.code)}</div>` : ''}
+        <div><strong>訪問回数:</strong> ${data.visits.length}件</div>
+      </div>
+    `;
+    
+    if (data.visits.length === 0) {
+      list.innerHTML = '';
+      empty.style.display = 'block';
+    } else {
+      empty.style.display = 'none';
+      list.innerHTML = data.visits.map(v => `
+        <tr>
+          <td>${formatDateWithDay(v.report_date)}</td>
+          <td>${escapeHtml(v.user_name)}</td>
+          <td>${escapeHtml(v.department_name || '-')}</td>
+          <td>${escapeHtml(v.visit_purpose || '-')}</td>
+          <td style="max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(v.meeting_content || '')}">
+            ${escapeHtml(v.meeting_content || '-')}
+          </td>
+          <td>
+            <a href="/report-detail.html?id=${v.report_id}" class="btn btn-sm btn-primary">日報を見る</a>
+          </td>
+        </tr>
+      `).join('');
+    }
+  } catch (error) {
+    loading.innerHTML = '<span style="color: #ef4444;">読み込みエラー</span>';
+  }
+}
+
+// 訪問履歴モーダルを開く（仕入先）
+async function openSupplierHistory(supplierId, supplierName) {
+  const modal = document.getElementById('visit-history-modal');
+  const loading = document.getElementById('visit-history-loading');
+  const content = document.getElementById('visit-history-content');
+  const title = document.getElementById('visit-history-title');
+  const info = document.getElementById('visit-history-info');
+  const list = document.getElementById('visit-history-list');
+  const empty = document.getElementById('visit-history-empty');
+  
+  modal.style.display = 'flex';
+  loading.style.display = 'block';
+  content.style.display = 'none';
+  title.textContent = `${supplierName} - 訪問履歴`;
+  
+  try {
+    const res = await fetch(`/api/suppliers/${supplierId}/visits`);
+    const data = await res.json();
+    
+    loading.style.display = 'none';
+    content.style.display = 'block';
+    
+    info.innerHTML = `
+      <div style="display: flex; gap: 30px; flex-wrap: wrap;">
+        <div><strong>仕入先名:</strong> ${escapeHtml(data.supplier.name)}</div>
+        ${data.supplier.code ? `<div><strong>仕入先コード:</strong> ${escapeHtml(data.supplier.code)}</div>` : ''}
+        <div><strong>訪問回数:</strong> ${data.visits.length}件</div>
+      </div>
+    `;
+    
+    if (data.visits.length === 0) {
+      list.innerHTML = '';
+      empty.style.display = 'block';
+    } else {
+      empty.style.display = 'none';
+      list.innerHTML = data.visits.map(v => `
+        <tr>
+          <td>${formatDateWithDay(v.report_date)}</td>
+          <td>${escapeHtml(v.user_name)}</td>
+          <td>${escapeHtml(v.department_name || '-')}</td>
+          <td>${escapeHtml(v.visit_purpose || '-')}</td>
+          <td style="max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(v.meeting_content || '')}">
+            ${escapeHtml(v.meeting_content || '-')}
+          </td>
+          <td>
+            <a href="/report-detail.html?id=${v.report_id}" class="btn btn-sm btn-primary">日報を見る</a>
+          </td>
+        </tr>
+      `).join('');
+    }
+  } catch (error) {
+    loading.innerHTML = '<span style="color: #ef4444;">読み込みエラー</span>';
+  }
+}
+
+// モーダルを閉じる
+function closeVisitHistoryModal() {
+  document.getElementById('visit-history-modal').style.display = 'none';
+}
+
+// モーダル外クリックで閉じる
+document.getElementById('visit-history-modal')?.addEventListener('click', function(e) {
+  if (e.target === this) {
+    closeVisitHistoryModal();
+  }
+});
+
+// 日付フォーマット（曜日付き）
+function formatDateWithDay(dateStr) {
+  if (!dateStr) return '-';
+  const date = new Date(dateStr);
+  const days = ['日', '月', '火', '水', '木', '金', '土'];
+  const m = date.getMonth() + 1;
+  const d = date.getDate();
+  const day = days[date.getDay()];
+  return `${m}/${d}(${day})`;
+}
+
+// HTMLエスケープ
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  })[c]);
+}
+</script>

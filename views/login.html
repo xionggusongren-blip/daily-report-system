@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ログイン - 営業日報システム</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="login-container">
+    <div class="login-box">
+      <h1 class="login-title">営業日報システム</h1>
+      <p class="login-subtitle">ログインしてください</p>
+      
+      <div id="error-message" class="login-error"></div>
+      
+      <form id="login-form">
+        <div class="form-group">
+          <label class="form-label" for="login_id">ユーザーID</label>
+          <input type="text" id="login_id" name="login_id" class="form-input" required autofocus>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label" for="password">パスワード</label>
+          <input type="password" id="password" name="password" class="form-input" required>
+        </div>
+        
+        <button type="submit" class="btn btn-primary btn-lg" style="width: 100%;">
+          ログイン
+        </button>
+      </form>
+    </div>
+  </div>
+  
+  <script>
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const errorEl = document.getElementById('error-message');
+      errorEl.style.display = 'none';
+      
+      const login_id = document.getElementById('login_id').value;
+      const password = document.getElementById('password').value;
+      
+      try {
+        const response = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ login_id, password })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+          // ログイン成功 → ダッシュボードへ
+          window.location.href = '/dashboard.html';
+        } else {
+          // エラー表示
+          errorEl.textContent = data.error || 'ログインに失敗しました';
+          errorEl.style.display = 'block';
+        }
+      } catch (error) {
+        errorEl.textContent = '通信エラーが発生しました';
+        errorEl.style.display = 'block';
+      }
+    });
+  </script>
+</body>
+</html>

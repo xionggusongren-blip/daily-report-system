@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ユーザー・部署管理 - 営業日報システム</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .admin-tabs {
+      display: flex;
+      gap: 0;
+      margin-bottom: 1.5rem;
+      border-bottom: 2px solid #e5e7eb;
+    }
+    .admin-tab {
+      padding: 0.75rem 1.5rem;
+      cursor: pointer;
+      border: none;
+      background: none;
+      font-size: 1rem;
+      color: #6b7280;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      transition: all 0.2s;
+    }
+    .admin-tab:hover {
+      color: #3b82f6;
+    }
+    .admin-tab.active {
+      color: #3b82f6;
+      border-bottom-color: #3b82f6;
+      font-weight: 600;
+    }
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+    }
+    .user-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem;
+      background: #f9fafb;
+      border-radius: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+    .user-card:hover {
+      background: #f3f4f6;
+    }
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .user-avatar {
+      width: 40px;
+      height: 40px;
+      background: #3b82f6;
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+    }
+    .user-details h4 {
+      margin: 0;
+      font-size: 1rem;
+    }
+    .user-details p {
+      margin: 0.25rem 0 0;
+      font-size: 0.875rem;
+      color: #6b7280;
+    }
+    .user-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+    .dept-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.75rem 1rem;
+      background: #f9fafb;
+      border-radius: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.active {
+      display: flex;
+    }
+    .modal-content {
+      background: white;
+      border-radius: 0.5rem;
+      padding: 1.5rem;
+      width: 90%;
+      max-width: 500px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+    .modal-header h3 {
+      margin: 0;
+    }
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: #6b7280;
+    }
+    .role-badge {
+      display: inline-block;
+      padding: 0.25rem 0.5rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+    .role-admin { background: #fee2e2; color: #991b1b; }
+    .role-manager { background: #dbeafe; color: #1e40af; }
+    .role-assistant { background: #fef3c7; color: #92400e; }
+    .role-sales { background: #dcfce7; color: #166534; }
+    .search-box {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    .search-box input {
+      flex: 1;
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-content">
+      <a href="/dashboard.html" class="logo">営業日報システム</a>
+      <nav class="nav" id="main-nav">
+        <a href="/dashboard.html" class="nav-link">ホーム</a>
+        <a href="/report-list.html" class="nav-link">日報一覧</a>
+        <a href="/calendar.html" class="nav-link">カレンダー</a>
+      </nav>
+      <div class="user-info">
+        <span class="user-name" id="user-name">-</span>
+        <button class="btn btn-outline btn-sm btn-logout" onclick="logout()">ログアウト</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <h1 class="page-title">👥 ユーザー・部署管理</h1>
+
+    <!-- タブ -->
+    <div class="admin-tabs">
+      <button class="admin-tab active" onclick="switchTab('users')">ユーザー管理</button>
+      <button class="admin-tab" onclick="switchTab('departments')">部署管理</button>
+    </div>
+
+    <!-- ユーザー管理タブ -->
+    <div id="tab-users" class="tab-content active">
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <h3 style="margin: 0;">ユーザー一覧</h3>
+          <button class="btn btn-primary" onclick="openUserModal()">+ 新規ユーザー</button>
+        </div>
+
+        <div class="search-box">
+          <input type="text" id="user-search" class="form-input" placeholder="名前・ログインIDで検索...">
+          <select id="user-filter-dept" class="form-select" style="width: auto;">
+            <option value="">全部署</option>
+          </select>
+          <select id="user-filter-role" class="form-select" style="width: auto;">
+            <option value="">全権限</option>
+            <option value="admin">管理者</option>
+            <option value="manager">上長</option>
+            <option value="assistant">アシスタント</option>
+            <option value="sales">営業</option>
+          </select>
+        </div>
+
+        <div id="user-list">
+          <p class="text-muted">読み込み中...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 部署管理タブ -->
+    <div id="tab-departments" class="tab-content">
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <h3 style="margin: 0;">部署一覧</h3>
+          <button class="btn btn-primary" onclick="openDeptModal()">+ 新規部署</button>
+        </div>
+
+        <div id="dept-list">
+          <p class="text-muted">読み込み中...</p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ユーザー編集モーダル -->
+  <div id="user-modal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="user-modal-title">新規ユーザー</h3>
+        <button class="modal-close" onclick="closeUserModal()">&times;</button>
+      </div>
+      <form id="user-form" onsubmit="saveUser(event)">
+        <input type="hidden" id="user-id">
+        
+        <div class="form-group">
+          <label class="form-label">ログインID <span style="color: #ef4444;">*</span></label>
+          <input type="text" id="user-login-id" class="form-input" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">パスワード <span id="password-note" style="font-size: 0.75rem; color: #6b7280;"></span></label>
+          <input type="password" id="user-password" class="form-input" placeholder="新規の場合は必須">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">氏名 <span style="color: #ef4444;">*</span></label>
+          <input type="text" id="user-name-input" class="form-input" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">メールアドレス</label>
+          <input type="email" id="user-email" class="form-input">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">部署</label>
+          <select id="user-department" class="form-select">
+            <option value="">未所属</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">権限 <span style="color: #ef4444;">*</span></label>
+          <select id="user-role" class="form-select" required>
+            <option value="sales">営業</option>
+            <option value="assistant">アシスタント（閲覧専用）</option>
+            <option value="manager">上長</option>
+            <option value="admin">管理者</option>
+          </select>
+        </div>
+
+        <div class="btn-group" style="margin-top: 1.5rem;">
+          <button type="submit" class="btn btn-primary">保存</button>
+          <button type="button" class="btn btn-outline" onclick="closeUserModal()">キャンセル</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 部署編集モーダル -->
+  <div id="dept-modal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="dept-modal-title">新規部署</h3>
+        <button class="modal-close" onclick="closeDeptModal()">&times;</button>
+      </div>
+      <form id="dept-form" onsubmit="saveDept(event)">
+        <input type="hidden" id="dept-id">
+        
+        <div class="form-group">
+          <label class="form-label">部署名 <span style="color: #ef4444;">*</span></label>
+          <input type="text" id="dept-name" class="form-input" required>
+        </div>
+
+        <div class="btn-group" style="margin-top: 1.5rem;">
+          <button type="submit" class="btn btn-primary">保存</button>
+          <button type="button" class="btn btn-outline" onclick="closeDeptModal()">キャンセル</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/js/common.js"></script>
+  <script>
+    let allUsers = [];
+    let allDepartments = [];
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      const user = await checkAuth();
+      if (!user) return;
+
+      if (user.role !== 'admin') {
+        alert('この画面にアクセスする権限がありません');
+        window.location.href = '/dashboard.html';
+        return;
+      }
+
+      // データ読み込み
+      await loadDepartments();
+      await loadUsers();
+
+      // 検索・フィルター
+      document.getElementById('user-search').addEventListener('input', filterUsers);
+      document.getElementById('user-filter-dept').addEventListener('change', filterUsers);
+      document.getElementById('user-filter-role').addEventListener('change', filterUsers);
+    });
+
+    function switchTab(tab) {
+      document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      
+      document.querySelector(`.admin-tab[onclick="switchTab('${tab}')"]`).classList.add('active');
+      document.getElementById(`tab-${tab}`).classList.add('active');
+    }
+
+    // 部署読み込み
+    async function loadDepartments() {
+      try {
+        const res = await fetch('/api/departments');
+        allDepartments = await res.json();
+        
+        renderDepartments();
+        updateDeptSelects();
+      } catch (error) {
+        console.error('部署読み込みエラー:', error);
+      }
+    }
+
+    function renderDepartments() {
+      const container = document.getElementById('dept-list');
+      
+      if (allDepartments.length === 0) {
+        container.innerHTML = '<p class="text-muted">部署がありません</p>';
+        return;
+      }
+
+      container.innerHTML = allDepartments.map(d => `
+        <div class="dept-item">
+          <div>
+            <strong>${escapeHtml(d.name)}</strong>
+            <span style="color: #6b7280; font-size: 0.875rem; margin-left: 0.5rem;">(${d.user_count || 0}名)</span>
+          </div>
+          <div class="user-actions">
+            <button class="btn btn-sm btn-outline" onclick="editDept(${d.id})">編集</button>
+            <button class="btn btn-sm btn-outline" style="color: #ef4444;" onclick="deleteDept(${d.id})">削除</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function updateDeptSelects() {
+      const selects = [
+        document.getElementById('user-department'),
+        document.getElementById('user-filter-dept')
+      ];
+
+      selects.forEach(select => {
+        const currentValue = select.value;
+        const isFilter = select.id === 'user-filter-dept';
+        
+        select.innerHTML = isFilter ? '<option value="">全部署</option>' : '<option value="">未所属</option>';
+        allDepartments.forEach(d => {
+          const option = document.createElement('option');
+          option.value = d.id;
+          option.textContent = d.name;
+          select.appendChild(option);
+        });
+        
+        select.value = currentValue;
+      });
+    }
+
+    // ユーザー読み込み
+    async function loadUsers() {
+      try {
+        const res = await fetch('/api/admin/users');
+        allUsers = await res.json();
+        renderUsers(allUsers);
+      } catch (error) {
+        console.error('ユーザー読み込みエラー:', error);
+      }
+    }
+
+    function filterUsers() {
+      const search = document.getElementById('user-search').value.toLowerCase();
+      const deptId = document.getElementById('user-filter-dept').value;
+      const role = document.getElementById('user-filter-role').value;
+
+      const filtered = allUsers.filter(u => {
+        const matchSearch = !search || 
+          u.name.toLowerCase().includes(search) || 
+          u.login_id.toLowerCase().includes(search);
+        const matchDept = !deptId || u.department_id == deptId;
+        const matchRole = !role || u.role === role;
+        return matchSearch && matchDept && matchRole;
+      });
+
+      renderUsers(filtered);
+    }
+
+    function renderUsers(users) {
+      const container = document.getElementById('user-list');
+      
+      if (users.length === 0) {
+        container.innerHTML = '<p class="text-muted">ユーザーがいません</p>';
+        return;
+      }
+
+      const roleLabels = {
+        'admin': { label: '管理者', class: 'role-admin' },
+        'manager': { label: '上長', class: 'role-manager' },
+        'assistant': { label: 'アシスタント', class: 'role-assistant' },
+        'sales': { label: '営業', class: 'role-sales' }
+      };
+
+      container.innerHTML = users.map(u => {
+        const role = roleLabels[u.role] || { label: u.role, class: '' };
+        const initial = u.name.charAt(0);
+        return `
+          <div class="user-card">
+            <div class="user-info">
+              <div class="user-avatar">${escapeHtml(initial)}</div>
+              <div class="user-details">
+                <h4>${escapeHtml(u.name)} <span class="role-badge ${role.class}">${role.label}</span></h4>
+                <p>${escapeHtml(u.login_id)} | ${escapeHtml(u.department_name || '未所属')}</p>
+              </div>
+            </div>
+            <div class="user-actions">
+              <button class="btn btn-sm btn-outline" onclick="editUser(${u.id})">編集</button>
+              <button class="btn btn-sm btn-outline" style="color: #ef4444;" onclick="deleteUser(${u.id})">削除</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // ユーザーモーダル
+    function openUserModal(userId = null) {
+      const modal = document.getElementById('user-modal');
+      const title = document.getElementById('user-modal-title');
+      const form = document.getElementById('user-form');
+      const passwordNote = document.getElementById('password-note');
+
+      form.reset();
+      document.getElementById('user-id').value = '';
+
+      if (userId) {
+        title.textContent = 'ユーザー編集';
+        passwordNote.textContent = '（空欄の場合は変更なし）';
+        const user = allUsers.find(u => u.id === userId);
+        if (user) {
+          document.getElementById('user-id').value = user.id;
+          document.getElementById('user-login-id').value = user.login_id;
+          document.getElementById('user-name-input').value = user.name;
+          document.getElementById('user-email').value = user.email || '';
+          document.getElementById('user-department').value = user.department_id || '';
+          document.getElementById('user-role').value = user.role;
+        }
+      } else {
+        title.textContent = '新規ユーザー';
+        passwordNote.textContent = '（必須）';
+      }
+
+      modal.classList.add('active');
+    }
+
+    function closeUserModal() {
+      document.getElementById('user-modal').classList.remove('active');
+    }
+
+    function editUser(id) {
+      openUserModal(id);
+    }
+
+    async function saveUser(event) {
+      event.preventDefault();
+
+      const id = document.getElementById('user-id').value;
+      const data = {
+        login_id: document.getElementById('user-login-id').value,
+        password: document.getElementById('user-password').value,
+        name: document.getElementById('user-name-input').value,
+        email: document.getElementById('user-email').value,
+        department_id: document.getElementById('user-department').value || null,
+        role: document.getElementById('user-role').value
+      };
+
+      // 新規でパスワード必須チェック
+      if (!id && !data.password) {
+        alert('新規ユーザーの場合、パスワードは必須です');
+        return;
+      }
+
+      try {
+        const url = id ? `/api/admin/users/${id}` : '/api/admin/users';
+        const method = id ? 'PUT' : 'POST';
+
+        const res = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || '保存に失敗しました');
+        }
+
+        closeUserModal();
+        await loadUsers();
+        await loadDepartments(); // ユーザー数更新
+        alert(id ? 'ユーザーを更新しました' : 'ユーザーを作成しました');
+      } catch (error) {
+        alert('エラー: ' + error.message);
+      }
+    }
+
+    async function deleteUser(id) {
+      const user = allUsers.find(u => u.id === id);
+      if (!confirm(`「${user.name}」を削除しますか？\n\n※このユーザーの日報データは残ります`)) return;
+
+      try {
+        const res = await fetch(`/api/admin/users/${id}`, { method: 'DELETE' });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || '削除に失敗しました');
+        }
+
+        await loadUsers();
+        await loadDepartments();
+        alert('ユーザーを削除しました');
+      } catch (error) {
+        alert('エラー: ' + error.message);
+      }
+    }
+
+    // 部署モーダル
+    function openDeptModal(deptId = null) {
+      const modal = document.getElementById('dept-modal');
+      const title = document.getElementById('dept-modal-title');
+      const form = document.getElementById('dept-form');
+
+      form.reset();
+      document.getElementById('dept-id').value = '';
+
+      if (deptId) {
+        title.textContent = '部署編集';
+        const dept = allDepartments.find(d => d.id === deptId);
+        if (dept) {
+          document.getElementById('dept-id').value = dept.id;
+          document.getElementById('dept-name').value = dept.name;
+        }
+      } else {
+        title.textContent = '新規部署';
+      }
+
+      modal.classList.add('active');
+    }
+
+    function closeDeptModal() {
+      document.getElementById('dept-modal').classList.remove('active');
+    }
+
+    function editDept(id) {
+      openDeptModal(id);
+    }
+
+    async function saveDept(event) {
+      event.preventDefault();
+
+      const id = document.getElementById('dept-id').value;
+      const data = {
+        name: document.getElementById('dept-name').value
+      };
+
+      try {
+        const url = id ? `/api/admin/departments/${id}` : '/api/admin/departments';
+        const method = id ? 'PUT' : 'POST';
+
+        const res = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || '保存に失敗しました');
+        }
+
+        closeDeptModal();
+        await loadDepartments();
+        alert(id ? '部署を更新しました' : '部署を作成しました');
+      } catch (error) {
+        alert('エラー: ' + error.message);
+      }
+    }
+
+    async function deleteDept(id) {
+      const dept = allDepartments.find(d => d.id === id);
+      if (dept.user_count > 0) {
+        alert(`この部署には${dept.user_count}名のユーザーが所属しています。\n先にユーザーの所属を変更してください。`);
+        return;
+      }
+
+      if (!confirm(`「${dept.name}」を削除しますか？`)) return;
+
+      try {
+        const res = await fetch(`/api/admin/departments/${id}`, { method: 'DELETE' });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || '削除に失敗しました');
+        }
+
+        await loadDepartments();
+        alert('部署を削除しました');
+      } catch (error) {
+        alert('エラー: ' + error.message);
+      }
+    }
+  </script>
+</body>
+</html>

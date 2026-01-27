@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>チーム日報 - 営業日報システム</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .visit-link {
+      color: inherit;
+      text-decoration: none;
+      padding: 0.125rem 0.375rem;
+      border-radius: 0.25rem;
+      font-size: 0.8rem;
+      display: inline-block;
+      margin: 0.125rem;
+    }
+    .visit-link.visit-customer {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+    .visit-link.visit-supplier {
+      background: #ffedd5;
+      color: #c2410c;
+    }
+    .visit-link:hover {
+      opacity: 0.8;
+      text-decoration: underline;
+    }
+    /* 重要キーワードハイライト */
+    .kw-alert {
+      background: linear-gradient(135deg, #fee2e2, #fecaca);
+      color: #991b1b;
+      padding: 0.1rem 0.4rem;
+      border-radius: 0.25rem;
+      font-weight: 600;
+      border: 1px solid #fca5a5;
+    }
+    .kw-warning {
+      background: linear-gradient(135deg, #ffedd5, #fed7aa);
+      color: #9a3412;
+      padding: 0.1rem 0.4rem;
+      border-radius: 0.25rem;
+      font-weight: 600;
+      border: 1px solid #fdba74;
+    }
+    .kw-positive {
+      background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+      color: #166534;
+      padding: 0.1rem 0.4rem;
+      border-radius: 0.25rem;
+      font-weight: 600;
+      border: 1px solid #86efac;
+    }
+    .kw-action {
+      background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+      color: #1e40af;
+      padding: 0.1rem 0.4rem;
+      border-radius: 0.25rem;
+      font-weight: 600;
+      border: 1px solid #93c5fd;
+    }
+  </style>
+</head>
+<body>
+  <!-- ヘッダー -->
+  <header class="header">
+    <div class="header-content">
+      <a href="/dashboard.html" class="logo">営業日報システム</a>
+      <nav class="nav" id="main-nav">
+        <a href="/dashboard.html" class="nav-link">ホーム</a>
+        <a href="/report-list.html" class="nav-link">日報一覧</a>
+        <a href="/calendar.html" class="nav-link">カレンダー</a>
+        <a href="/team-reports.html" class="nav-link active">チーム日報</a>
+      </nav>
+      <div class="user-info">
+        <span class="user-name" id="user-name">-</span>
+        <button class="btn btn-outline btn-sm btn-logout" onclick="logout()">ログアウト</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- メインコンテンツ -->
+  <main class="main-content">
+    <h1 class="page-title">チーム日報</h1>
+
+    <!-- フィルター -->
+    <div class="card">
+      <!-- 期間プリセットボタン -->
+      <div style="margin-bottom: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+        <span style="font-size: 0.875rem; color: #64748b;">期間:</span>
+        <button type="button" class="btn btn-outline btn-sm" onclick="setPeriod('today')">今日</button>
+        <button type="button" class="btn btn-outline btn-sm" onclick="setPeriod('week')">今週</button>
+        <button type="button" class="btn btn-outline btn-sm" onclick="setPeriod('month')">今月</button>
+        <button type="button" class="btn btn-outline btn-sm" onclick="setPeriod('lastMonth')">先月</button>
+        <select id="period-year" class="form-select" style="width: auto; padding: 0.375rem 0.5rem; font-size: 0.875rem;" onchange="setPeriodYear(this.value)">
+          <option value="">年を選択</option>
+        </select>
+        <button type="button" class="btn btn-outline btn-sm" onclick="setPeriod('all')">全期間</button>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">期間（開始）</label>
+          <input type="date" id="filter-from" class="form-input">
+        </div>
+        <div class="form-group">
+          <label class="form-label">期間（終了）</label>
+          <input type="date" id="filter-to" class="form-input">
+        </div>
+        <div class="form-group">
+          <label class="form-label">ステータス</label>
+          <select id="filter-status" class="form-select">
+            <option value="" selected>すべて</option>
+            <option value="submitted">提出済み（未確認）</option>
+            <option value="confirmed">確認済み</option>
+            <option value="rejected">差し戻し</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">部署</label>
+          <select id="filter-department" class="form-select">
+            <option value="">すべて</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">提出者</label>
+          <select id="filter-user" class="form-select">
+            <option value="">すべて</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row" style="margin-top: 0.5rem;">
+        <div class="form-group">
+          <label class="form-label">得意先</label>
+          <select id="filter-customer" class="form-select">
+            <option value="">すべて</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">仕入先</label>
+          <select id="filter-supplier" class="form-select">
+            <option value="">すべて</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">並び順</label>
+          <select id="filter-sort" class="form-select">
+            <option value="date">日付順（新しい順）</option>
+            <option value="updated">更新日順（新しい順）</option>
+          </select>
+        </div>
+        <div class="form-group" style="display: flex; align-items: flex-end;">
+          <button type="button" class="btn btn-primary" onclick="loadReports()">検索</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 集計情報（コンパクト表示） -->
+    <div style="display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap;">
+      <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 0.5rem 1rem; border-radius: 0.375rem; display: flex; align-items: center; gap: 0.5rem;">
+        <span style="font-size: 0.875rem;">確認待ち</span>
+        <span style="font-size: 1.25rem; font-weight: bold;" id="count-submitted">-</span>
+      </div>
+      <div style="background: #dcfce7; border-left: 4px solid #22c55e; padding: 0.5rem 1rem; border-radius: 0.375rem; display: flex; align-items: center; gap: 0.5rem;">
+        <span style="font-size: 0.875rem;">確認済み</span>
+        <span style="font-size: 1.25rem; font-weight: bold;" id="count-confirmed">-</span>
+      </div>
+      <div style="background: #fee2e2; border-left: 4px solid #ef4444; padding: 0.5rem 1rem; border-radius: 0.375rem; display: flex; align-items: center; gap: 0.5rem;">
+        <span style="font-size: 0.875rem;">差し戻し</span>
+        <span style="font-size: 1.25rem; font-weight: bold;" id="count-rejected">-</span>
+      </div>
+      <div style="background: #f3f4f6; padding: 0.5rem 1rem; border-radius: 0.375rem; display: flex; align-items: center; gap: 0.5rem;">
+        <span style="font-size: 0.875rem;">合計</span>
+        <span style="font-size: 1.25rem; font-weight: bold;" id="count-total">-</span>
+      </div>
+    </div>
+
+    <!-- 日報リスト（メインコンテンツ・最上部に配置） -->
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h3 style="margin: 0;">📋 日報一覧 <span id="report-count-label" style="font-size: 0.875rem; font-weight: normal; color: #64748b;"></span></h3>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+          <button type="button" class="btn btn-primary btn-sm" id="bulk-confirm-btn" onclick="bulkConfirm()" style="display: none;">
+            ✓ 選択した日報を確認済みにする (<span id="selected-count">0</span>件)
+          </button>
+          <a href="/weekly-summary.html" class="btn btn-outline btn-sm">📊 週次サマリー</a>
+          <a href="/monthly-report.html" class="btn btn-outline btn-sm">📊 月次レポート</a>
+          <div class="dropdown" style="position: relative;">
+            <button type="button" class="btn btn-outline btn-sm" onclick="toggleExportMenu()">📥 エクスポート ▾</button>
+            <div id="export-menu" style="display: none; position: absolute; right: 0; top: 100%; background: white; border: 1px solid #e2e8f0; border-radius: 0.375rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 100; min-width: 180px;">
+              <div style="padding: 0.5rem 0;">
+                <button onclick="exportReports()" style="display: block; width: 100%; padding: 0.5rem 1rem; text-align: left; background: none; border: none; cursor: pointer; font-size: 0.875rem;">📄 日報CSV</button>
+                <button onclick="exportVisits()" style="display: block; width: 100%; padding: 0.5rem 1rem; text-align: left; background: none; border: none; cursor: pointer; font-size: 0.875rem;">📄 訪問履歴CSV</button>
+                <div style="border-top: 1px solid #e2e8f0; margin: 0.25rem 0;"></div>
+                <button onclick="exportVisitsExcel()" style="display: block; width: 100%; padding: 0.5rem 1rem; text-align: left; background: none; border: none; cursor: pointer; font-size: 0.875rem;">📊 訪問履歴Excel</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="table-container">
+        <table class="table">
+          <thead>
+            <tr>
+              <th style="width: 40px;"><input type="checkbox" id="select-all" onchange="toggleSelectAll()"></th>
+              <th>日付</th>
+              <th>氏名</th>
+              <th>部署</th>
+              <th>訪問先</th>
+              <th style="width: 60px;">💬</th>
+              <th>確認者</th>
+              <th>ステータス</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="report-list">
+            <tr>
+              <td colspan="9" class="text-center text-muted">読み込み中...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 統計情報（折りたたみ可能） -->
+    <details class="card" style="cursor: pointer;">
+      <summary style="font-weight: 600; padding: 0.5rem 0; user-select: none;">
+        📊 統計情報を表示
+      </summary>
+      
+      <div style="margin-top: 1rem;">
+        <!-- メンバー別訪問統計 -->
+        <div style="margin-bottom: 2rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h4 style="margin: 0;">メンバー別訪問件数（同行含む）</h4>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+              <label style="font-size: 0.875rem;">並び替え:</label>
+              <select id="stats-sort" class="form-select" style="width: auto;" onchange="sortAndRenderStats()">
+                <option value="total-desc">合計（多い順）</option>
+                <option value="total-asc">合計（少ない順）</option>
+                <option value="own-desc">担当（多い順）</option>
+                <option value="companion-desc">同行（多い順）</option>
+                <option value="name-asc">氏名（あいうえお順）</option>
+              </select>
+            </div>
+          </div>
+          
+          <!-- グラフエリア -->
+          <div id="visit-chart" style="margin-bottom: 1rem;"></div>
+          
+          <div class="table-container">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th style="cursor: pointer;" onclick="sortStats('name')">氏名 <span id="sort-name"></span></th>
+                  <th>部署</th>
+                  <th style="text-align: right; cursor: pointer;" onclick="sortStats('own')">担当 <span id="sort-own"></span></th>
+                  <th style="text-align: right; cursor: pointer;" onclick="sortStats('companion')">同行 <span id="sort-companion"></span></th>
+                  <th style="text-align: right; cursor: pointer;" onclick="sortStats('total')">合計 <span id="sort-total"></span></th>
+                </tr>
+              </thead>
+              <tbody id="team-visit-stats">
+                <tr>
+                  <td colspan="5" class="text-center text-muted">読み込み中...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 訪問先別統計 -->
+        <div>
+          <h4 style="margin: 0 0 1rem 0;">🏢 訪問先別内訳</h4>
+          
+          <!-- 全体サマリー -->
+          <div style="display: flex; gap: 2rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+            <div style="text-align: center;">
+              <div style="font-size: 1.5rem; font-weight: bold; color: #3b82f6;" id="total-all-visits">-</div>
+              <div style="font-size: 0.75rem; color: #6b7280;">総訪問件数</div>
+            </div>
+            <div style="text-align: center;">
+              <div style="font-size: 1.5rem; font-weight: bold; color: #10b981;" id="total-customer-visits">-</div>
+              <div style="font-size: 0.75rem; color: #6b7280;">得意先</div>
+            </div>
+            <div style="text-align: center;">
+              <div style="font-size: 1.5rem; font-weight: bold; color: #f59e0b;" id="total-supplier-visits">-</div>
+              <div style="font-size: 0.75rem; color: #6b7280;">仕入先</div>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem;">
+            <!-- 得意先ランキング -->
+            <div>
+              <h5 style="font-size: 0.8rem; color: #6b7280; margin-bottom: 0.5rem;">得意先 訪問回数ランキング（上位10社）</h5>
+              <div id="customer-chart"></div>
+            </div>
+            
+            <!-- 仕入先ランキング -->
+            <div>
+              <h5 style="font-size: 0.8rem; color: #6b7280; margin-bottom: 0.5rem;">仕入先 訪問回数ランキング（上位10社）</h5>
+              <div id="supplier-chart"></div>
+            </div>
+          </div>
+
+          <!-- 訪問目的別 -->
+          <div style="margin-top: 1.5rem;">
+            <h5 style="font-size: 0.8rem; color: #6b7280; margin-bottom: 0.5rem;">訪問目的別</h5>
+            <div id="purpose-chart" style="display: flex; flex-wrap: wrap; gap: 0.5rem;"></div>
+          </div>
+        </div>
+      </div>
+    </details>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script>
+    let currentUserRole = 'sales';
+
+    const TEAM_FILTER_KEY = 'teamReportsFilters';
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      const user = await checkAuth();
+      if (!user) return;
+
+      currentUserRole = user.role;
+
+      // salesユーザーは確認関連UIを非表示
+      if (user.role === 'sales') {
+        const bulkConfirmBtn = document.getElementById('bulk-confirm-btn');
+        if (bulkConfirmBtn) bulkConfirmBtn.style.display = 'none';
+      }
+
+      // 年選択肢を生成（現在年から過去5年）
+      const yearSelect = document.getElementById('period-year');
+      const currentYear = new Date().getFullYear();
+      for (let y = currentYear; y >= currentYear - 5; y--) {
+        const opt = document.createElement('option');
+        opt.value = y;
+        opt.textContent = `${y}年`;
+        yearSelect.appendChild(opt);
+      }
+
+      // URLパラメータをチェック
+      const urlParams = new URLSearchParams(window.location.search);
+      const statusParam = urlParams.get('status');
+
+      if (statusParam === 'submitted') {
+        // 確認待ち表示モード: 日付を広くして確認待ちのみ表示
+        document.getElementById('filter-from').value = '2020-01-01';
+        document.getElementById('filter-to').value = getTodayString();
+        document.getElementById('filter-status').value = 'submitted';
+      } else {
+        // 保存されたフィルターを復元、なければ今月
+        const saved = sessionStorage.getItem(TEAM_FILTER_KEY);
+        if (saved) {
+          const filters = JSON.parse(saved);
+          document.getElementById('filter-from').value = filters.from || '';
+          document.getElementById('filter-to').value = filters.to || '';
+          document.getElementById('filter-department').value = filters.department || '';
+          document.getElementById('filter-user').value = filters.user || '';
+          document.getElementById('filter-status').value = filters.status || '';
+          document.getElementById('filter-customer').value = filters.customer || '';
+          document.getElementById('filter-supplier').value = filters.supplier || '';
+        } else {
+          const now = new Date();
+          const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+          document.getElementById('filter-from').value = formatDateInput(firstDay);
+          document.getElementById('filter-to').value = getTodayString();
+        }
+      }
+
+      // 部署・ユーザー・得意先・仕入先リスト読み込み
+      await loadDepartments();
+      await loadUsers();
+      await loadCustomers();
+      await loadSuppliers();
+
+      // 日報読み込み（訪問統計も連動して更新される）
+      loadReports();
+    });
+
+    // フィルターを保存
+    function saveTeamFilters() {
+      const filters = {
+        from: document.getElementById('filter-from').value,
+        to: document.getElementById('filter-to').value,
+        department: document.getElementById('filter-department').value,
+        user: document.getElementById('filter-user').value,
+        status: document.getElementById('filter-status').value,
+        customer: document.getElementById('filter-customer').value,
+        supplier: document.getElementById('filter-supplier').value
+      };
+      sessionStorage.setItem(TEAM_FILTER_KEY, JSON.stringify(filters));
+    }
+
+    // 期間プリセット
+    function setPeriod(type) {
+      const now = new Date();
+      let from, to;
+      
+      switch(type) {
+        case 'today':
+          from = to = formatDateInput(now);
+          break;
+        case 'week':
+          const weekStart = new Date(now);
+          weekStart.setDate(now.getDate() - now.getDay() + 1); // 月曜日
+          from = formatDateInput(weekStart);
+          to = formatDateInput(now);
+          break;
+        case 'month':
+          from = formatDateInput(new Date(now.getFullYear(), now.getMonth(), 1));
+          to = formatDateInput(now);
+          break;
+        case 'lastMonth':
+          from = formatDateInput(new Date(now.getFullYear(), now.getMonth() - 1, 1));
+          to = formatDateInput(new Date(now.getFullYear(), now.getMonth(), 0));
+          break;
+        case 'all':
+          from = '2020-01-01';
+          to = formatDateInput(now);
+          break;
+      }
+      
+      document.getElementById('filter-from').value = from;
+      document.getElementById('filter-to').value = to;
+      document.getElementById('period-year').value = '';
+      loadReports();
+    }
+
+    function setPeriodYear(year) {
+      if (!year) return;
+      document.getElementById('filter-from').value = `${year}-01-01`;
+      document.getElementById('filter-to').value = `${year}-12-31`;
+      loadReports();
+    }
+
+    function formatDateInput(date) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    function formatVisitLinks(visitDetails) {
+      if (!visitDetails || visitDetails.length === 0) return '-';
+      return visitDetails.map(v => {
+        if (!v.name) return '';
+        if (v.type === 'supplier' && v.supplier_id) {
+          return `<a href="/customer-history.html?type=supplier&id=${v.supplier_id}" class="visit-link visit-supplier">${escapeHtml(v.name)}</a>`;
+        } else if (v.type === 'customer' && v.customer_id) {
+          return `<a href="/customer-history.html?type=customer&id=${v.customer_id}" class="visit-link visit-customer">${escapeHtml(v.name)}</a>`;
+        }
+        return escapeHtml(v.name);
+      }).filter(x => x).join(', ');
+    }
+
+    async function loadDepartments() {
+      try {
+        const res = await fetch('/api/departments');
+        const departments = await res.json();
+        const select = document.getElementById('filter-department');
+        departments.forEach(d => {
+          const option = document.createElement('option');
+          option.value = d.id;
+          option.textContent = d.name;
+          select.appendChild(option);
+        });
+      } catch (error) {
+        console.error('部署読み込みエラー:', error);
+      }
+    }
+
+    async function loadUsers() {
+      try {
+        const res = await fetch('/api/users');
+        const users = await res.json();
+        const select = document.getElementById('filter-user');
+        users.forEach(u => {
+          const option = document.createElement('option');
+          option.value = u.id;
+          option.textContent = u.name;
+          select.appendChild(option);
+        });
+      } catch (error) {
+        console.error('ユーザー読み込みエラー:', error);
+      }
+    }
+
+    async function loadCustomers() {
+      try {
+        const res = await fetch('/api/customers');
+        const customers = await res.json();
+        const select = document.getElementById('filter-customer');
+        customers.forEach(c => {
+          const option = document.createElement('option');
+          option.value = c.id;
+          option.textContent = c.name;
+          select.appendChild(option);
+        });
+      } catch (error) {
+        console.error('得意先読み込みエラー:', error);
+      }
+    }
+
+    async function loadSuppliers() {
+      try {
+        const res = await fetch('/api/suppliers');
+        const suppliers = await res.json();
+        const select = document.getElementById('filter-supplier');
+        suppliers.forEach(s => {
+          const option = document.createElement('option');
+          option.value = s.id;
+          option.textContent = s.name;
+          select.appendChild(option);
+        });
+      } catch (error) {
+        console.error('仕入先読み込みエラー:', error);
+      }
+    }
+
+    async function loadReports() {
+      const from = document.getElementById('filter-from').value;
+      const to = document.getElementById('filter-to').value;
+      const status = document.getElementById('filter-status').value;
+      const departmentId = document.getElementById('filter-department').value;
+      const userId = document.getElementById('filter-user').value;
+      const customerId = document.getElementById('filter-customer').value;
+      const supplierId = document.getElementById('filter-supplier').value;
+      const sortOrder = document.getElementById('filter-sort').value;
+
+      // フィルターを保存（URLパラメータ経由でない場合のみ）
+      const urlParams = new URLSearchParams(window.location.search);
+      if (!urlParams.get('status')) {
+        saveTeamFilters();
+      }
+
+      let url = '/api/team-reports?';
+      if (from) url += `from=${from}&`;
+      if (to) url += `to=${to}&`;
+      if (status) url += `status=${status}&`;
+      if (departmentId) url += `department_id=${departmentId}&`;
+      if (userId) url += `user_id=${userId}&`;
+      if (customerId) url += `customer_id=${customerId}&`;
+      if (supplierId) url += `supplier_id=${supplierId}&`;
+      if (sortOrder === 'updated') url += `sort=updated&`;
+
+      try {
+        const res = await fetch(url);
+        const reports = await res.json();
+
+        // 件数表示
+        document.getElementById('report-count-label').textContent = `(${reports.length}件)`;
+
+        // 件数集計
+        const countSubmitted = reports.filter(r => r.status === 'submitted').length;
+        const countConfirmed = reports.filter(r => r.status === 'confirmed').length;
+        const countRejected = reports.filter(r => r.status === 'rejected').length;
+        
+        document.getElementById('count-submitted').textContent = countSubmitted;
+        document.getElementById('count-confirmed').textContent = countConfirmed;
+        document.getElementById('count-rejected').textContent = countRejected;
+        document.getElementById('count-total').textContent = reports.length;
+
+        const tbody = document.getElementById('report-list');
+
+        if (reports.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">日報がありません</td></tr>';
+          document.getElementById('select-all').style.display = 'none';
+          return;
+        }
+
+        document.getElementById('select-all').style.display = '';
+
+        const canConfirm = currentUserRole === 'manager' || currentUserRole === 'admin';
+
+        tbody.innerHTML = reports.map(r => `
+          <tr>
+            <td>
+              ${r.status === 'submitted' && canConfirm ? `<input type="checkbox" class="report-checkbox" data-id="${r.id}" onchange="updateSelectedCount()">` : ''}
+            </td>
+            <td>${formatDateWithDay(r.report_date)}</td>
+            <td>${escapeHtml(r.user_name)}</td>
+            <td>${escapeHtml(r.department_name || '-')}</td>
+            <td>${formatVisitLinks(r.visit_details)}</td>
+            <td style="text-align: center;">${r.comment_count > 0 ? `<span style="background: #3b82f6; color: white; padding: 0.125rem 0.5rem; border-radius: 1rem; font-size: 0.75rem;">${r.comment_count}</span>` : '-'}</td>
+            <td>${escapeHtml(r.confirmed_by_name || '-')}</td>
+            <td>${formatStatus(r.status)}</td>
+            <td>
+              ${r.status === 'submitted' && canConfirm ? `
+                <button class="btn btn-sm btn-success" onclick="quickConfirm(${r.id})" title="確認済みにする">✓</button>
+              ` : ''}
+              <a href="/report-detail.html?id=${r.id}" class="btn btn-sm btn-primary">詳細</a>
+            </td>
+          </tr>
+        `).join('');
+
+        updateSelectedCount();
+
+        // 訪問統計も更新
+        loadTeamVisitStats();
+
+        // 訪問先別統計も更新
+        loadVisitTargetStats();
+
+      } catch (error) {
+        console.error('日報読み込みエラー:', error);
+        document.getElementById('report-list').innerHTML = 
+          '<tr><td colspan="9" class="text-center text-danger">読み込みエラー</td></tr>';
+      }
+    }
+
+    // エクスポートメニュートグル
+    function toggleExportMenu() {
+      const menu = document.getElementById('export-menu');
+      menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+    }
+
+    // メニュー外クリックで閉じる
+    document.addEventListener('click', (e) => {
+      const menu = document.getElementById('export-menu');
+      if (menu && !e.target.closest('.dropdown')) {
+        menu.style.display = 'none';
+      }
+    });
+
+    // 日報CSVエクスポート
+    function exportReports() {
+      const from = document.getElementById('filter-from').value;
+      const to = document.getElementById('filter-to').value;
+      const departmentId = document.getElementById('filter-department').value;
+      const userId = document.getElementById('filter-user').value;
+
+      let url = '/api/export/reports?';
+      if (from) url += `from=${from}&`;
+      if (to) url += `to=${to}&`;
+      if (departmentId) url += `department_id=${departmentId}&`;
+      if (userId) url += `user_id=${userId}&`;
+
+      window.location.href = url;
+      document.getElementById('export-menu').style.display = 'none';
+    }
+
+    // 訪問CSVエクスポート
+    function exportVisits() {
+      const from = document.getElementById('filter-from').value;
+      const to = document.getElementById('filter-to').value;
+      const departmentId = document.getElementById('filter-department').value;
+      const userId = document.getElementById('filter-user').value;
+
+      let url = '/api/export/visits?';
+      if (from) url += `from=${from}&`;
+      if (to) url += `to=${to}&`;
+      if (departmentId) url += `department_id=${departmentId}&`;
+      if (userId) url += `user_id=${userId}&`;
+
+      window.location.href = url;
+      document.getElementById('export-menu').style.display = 'none';
+    }
+
+    // 訪問履歴Excelエクスポート
+    function exportVisitsExcel() {
+      const from = document.getElementById('filter-from').value;
+      const to = document.getElementById('filter-to').value;
+      const departmentId = document.getElementById('filter-department').value;
+      const userId = document.getElementById('filter-user').value;
+
+      let url = '/api/export/visits-excel?';
+      if (from) url += `from=${from}&`;
+      if (to) url += `to=${to}&`;
+      if (departmentId) url += `department_id=${departmentId}&`;
+      if (userId) url += `user_id=${userId}&`;
+
+      window.location.href = url;
+      document.getElementById('export-menu').style.display = 'none';
+    }
+
+    // 訪問統計データを保持
+    let visitStatsData = [];
+    let currentSort = { field: 'total', order: 'desc' };
+
+    // チーム訪問統計読み込み
+    async function loadTeamVisitStats() {
+      const from = document.getElementById('filter-from').value;
+      const to = document.getElementById('filter-to').value;
+
+      let url = '/api/stats/team-visits?';
+      if (from) url += `from=${from}&`;
+      if (to) url += `to=${to}&`;
+
+      try {
+        const res = await fetch(url);
+        visitStatsData = await res.json();
+
+        if (visitStatsData.length === 0) {
+          document.getElementById('team-visit-stats').innerHTML = 
+            '<tr><td colspan="5" class="text-center text-muted">データがありません</td></tr>';
+          document.getElementById('visit-chart').innerHTML = '';
+          return;
+        }
+
+        // デフォルトソートで表示
+        sortAndRenderStats();
+
+      } catch (error) {
+        console.error('チーム訪問統計エラー:', error);
+        document.getElementById('team-visit-stats').innerHTML = 
+          '<tr><td colspan="5" class="text-center text-danger">読み込みエラー</td></tr>';
+      }
+    }
+
+    // ソートして表示
+    function sortAndRenderStats() {
+      const sortValue = document.getElementById('stats-sort').value;
+      const [field, order] = sortValue.split('-');
+      currentSort = { field, order };
+
+      // ソート
+      const sorted = [...visitStatsData].sort((a, b) => {
+        let aVal, bVal;
+        switch (field) {
+          case 'total':
+            aVal = a.total_visits;
+            bVal = b.total_visits;
+            break;
+          case 'own':
+            aVal = a.own_visits;
+            bVal = b.own_visits;
+            break;
+          case 'companion':
+            aVal = a.companion_visits;
+            bVal = b.companion_visits;
+            break;
+          case 'name':
+            aVal = a.user_name;
+            bVal = b.user_name;
+            return order === 'asc' ? aVal.localeCompare(bVal, 'ja') : bVal.localeCompare(aVal, 'ja');
+          default:
+            aVal = a.total_visits;
+            bVal = b.total_visits;
+        }
+        return order === 'asc' ? aVal - bVal : bVal - aVal;
+      });
+
+      // テーブル表示
+      renderStatsTable(sorted);
+
+      // グラフ表示
+      renderVisitChart(sorted);
+
+      // ソートインジケーター更新
+      updateSortIndicators();
+    }
+
+    // ヘッダークリックでソート
+    function sortStats(field) {
+      const select = document.getElementById('stats-sort');
+      const currentValue = select.value;
+      const [currentField, currentOrder] = currentValue.split('-');
+
+      let newOrder = 'desc';
+      if (currentField === field && currentOrder === 'desc') {
+        newOrder = 'asc';
+      }
+
+      select.value = `${field}-${newOrder}`;
+      sortAndRenderStats();
+    }
+
+    // ソートインジケーター
+    function updateSortIndicators() {
+      ['name', 'own', 'companion', 'total'].forEach(f => {
+        const el = document.getElementById(`sort-${f}`);
+        if (el) {
+          if (currentSort.field === f) {
+            el.textContent = currentSort.order === 'desc' ? '▼' : '▲';
+          } else {
+            el.textContent = '';
+          }
+        }
+      });
+    }
+
+    // テーブル描画
+    function renderStatsTable(data) {
+      const tbody = document.getElementById('team-visit-stats');
+      const maxTotal = Math.max(...data.map(s => s.total_visits), 1);
+
+      tbody.innerHTML = data.map(s => {
+        const barWidth = (s.total_visits / maxTotal) * 100;
+        return `
+          <tr>
+            <td>${escapeHtml(s.user_name)}</td>
+            <td>${escapeHtml(s.department_name || '-')}</td>
+            <td style="text-align: right;">${s.own_visits}</td>
+            <td style="text-align: right;">${s.companion_visits}</td>
+            <td style="text-align: right; font-weight: bold;">${s.total_visits}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // 横棒グラフ描画
+    function renderVisitChart(data) {
+      const container = document.getElementById('visit-chart');
+      const maxTotal = Math.max(...data.map(s => s.total_visits), 1);
+
+      // 上位10名のみ表示
+      const topData = data.slice(0, 10);
+
+      let html = '<div style="font-size: 0.875rem; color: #6b7280; margin-bottom: 0.5rem;">訪問件数内訳（上位10名）</div>';
+      
+      topData.forEach(s => {
+        const ownWidth = (s.own_visits / maxTotal) * 100;
+        const compWidth = (s.companion_visits / maxTotal) * 100;
+        
+        html += `
+          <div style="display: flex; align-items: center; margin-bottom: 0.5rem;">
+            <div style="width: 80px; font-size: 0.875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(s.user_name)}">
+              ${escapeHtml(s.user_name)}
+            </div>
+            <div style="flex: 1; display: flex; height: 24px; background: #f3f4f6; border-radius: 4px; overflow: hidden;">
+              <div style="width: ${ownWidth}%; background: #3b82f6;" title="担当: ${s.own_visits}件"></div>
+              <div style="width: ${compWidth}%; background: #93c5fd;" title="同行: ${s.companion_visits}件"></div>
+            </div>
+            <div style="width: 50px; text-align: right; font-size: 0.875rem; font-weight: 600; margin-left: 0.5rem;">
+              ${s.total_visits}
+            </div>
+          </div>
+        `;
+      });
+
+      html += `
+        <div style="display: flex; gap: 1rem; margin-top: 0.75rem; font-size: 0.75rem; color: #6b7280;">
+          <span><span style="display: inline-block; width: 12px; height: 12px; background: #3b82f6; border-radius: 2px; vertical-align: middle;"></span> 担当</span>
+          <span><span style="display: inline-block; width: 12px; height: 12px; background: #93c5fd; border-radius: 2px; vertical-align: middle;"></span> 同行</span>
+        </div>
+      `;
+
+      container.innerHTML = html;
+    }
+
+    // 訪問先別統計読み込み
+    async function loadVisitTargetStats() {
+      const from = document.getElementById('filter-from').value;
+      const to = document.getElementById('filter-to').value;
+
+      let url = '/api/stats/visit-targets?';
+      if (from) url += `from=${from}&`;
+      if (to) url += `to=${to}&`;
+
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+
+        // サマリー表示
+        document.getElementById('total-all-visits').textContent = data.totals.total_visits || 0;
+        document.getElementById('total-customer-visits').textContent = data.totals.customer_visits || 0;
+        document.getElementById('total-supplier-visits').textContent = data.totals.supplier_visits || 0;
+
+        // 得意先グラフ
+        renderTargetChart('customer-chart', data.customers, '#10b981');
+
+        // 仕入先グラフ
+        renderTargetChart('supplier-chart', data.suppliers, '#f59e0b');
+
+        // 目的別グラフ
+        renderPurposeChart(data.purposes);
+
+      } catch (error) {
+        console.error('訪問先別統計エラー:', error);
+      }
+    }
+
+    // 訪問先ランキンググラフ描画
+    function renderTargetChart(containerId, data, color) {
+      const container = document.getElementById(containerId);
+      
+      if (!data || data.length === 0) {
+        container.innerHTML = '<div style="color: #9ca3af; font-size: 0.875rem;">データがありません</div>';
+        return;
+      }
+
+      const topData = data.slice(0, 10);
+      const maxCount = Math.max(...topData.map(d => d.visit_count), 1);
+
+      let html = '';
+      topData.forEach((d, index) => {
+        const width = (d.visit_count / maxCount) * 100;
+        html += `
+          <div style="display: flex; align-items: center; margin-bottom: 0.4rem;">
+            <div style="width: 20px; font-size: 0.75rem; color: #9ca3af;">${index + 1}</div>
+            <div style="width: 100px; font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(d.name)}">
+              ${escapeHtml(d.name)}
+            </div>
+            <div style="flex: 1; height: 18px; background: #f3f4f6; border-radius: 3px; overflow: hidden; margin: 0 0.5rem;">
+              <div style="width: ${width}%; height: 100%; background: ${color};"></div>
+            </div>
+            <div style="width: 30px; text-align: right; font-size: 0.8rem; font-weight: 600;">
+              ${d.visit_count}
+            </div>
+          </div>
+        `;
+      });
+
+      container.innerHTML = html;
+    }
+
+    // 訪問目的別グラフ描画
+    function renderPurposeChart(data) {
+      const container = document.getElementById('purpose-chart');
+      
+      if (!data || data.length === 0) {
+        container.innerHTML = '<div style="color: #9ca3af; font-size: 0.875rem;">データがありません</div>';
+        return;
+      }
+
+      const purposeLabels = {
+        'sales': '商談',
+        'follow_up': 'フォローアップ',
+        'claim': 'クレーム対応',
+        'greeting': '挨拶・表敬',
+        'meeting': '打ち合わせ',
+        'info_exchange': '情報交換',
+        'other': 'その他'
+      };
+
+      const colors = {
+        'sales': '#3b82f6',
+        'follow_up': '#10b981',
+        'claim': '#ef4444',
+        'greeting': '#8b5cf6',
+        'meeting': '#f59e0b',
+        'info_exchange': '#06b6d4',
+        'other': '#6b7280'
+      };
+
+      let html = '';
+      data.forEach(d => {
+        const label = purposeLabels[d.purpose] || d.purpose || 'その他';
+        const color = colors[d.purpose] || '#6b7280';
+        html += `
+          <div style="display: inline-flex; align-items: center; background: #f3f4f6; padding: 0.4rem 0.75rem; border-radius: 9999px; font-size: 0.8rem;">
+            <span style="display: inline-block; width: 10px; height: 10px; background: ${color}; border-radius: 50%; margin-right: 0.4rem;"></span>
+            ${escapeHtml(label)}
+            <span style="font-weight: 600; margin-left: 0.4rem;">${d.count}</span>
+          </div>
+        `;
+      });
+
+      container.innerHTML = html;
+    }
+
+    // 全選択/解除
+    function toggleSelectAll() {
+      const selectAll = document.getElementById('select-all').checked;
+      document.querySelectorAll('.report-checkbox').forEach(cb => {
+        cb.checked = selectAll;
+      });
+      updateSelectedCount();
+    }
+
+    // 選択件数更新
+    function updateSelectedCount() {
+      const count = document.querySelectorAll('.report-checkbox:checked').length;
+      document.getElementById('selected-count').textContent = count;
+      document.getElementById('bulk-confirm-btn').style.display = count > 0 ? '' : 'none';
+    }
+
+    // クイック確認（1件）
+    async function quickConfirm(reportId) {
+      try {
+        const res = await fetch(`/api/reports/${reportId}/confirm`, { method: 'POST' });
+        if (res.ok) {
+          loadReports();
+        } else {
+          const err = await res.json();
+          alert('確認に失敗しました: ' + err.error);
+        }
+      } catch (error) {
+        console.error('確認エラー:', error);
+        alert('確認に失敗しました');
+      }
+    }
+
+    // 一括確認
+    async function bulkConfirm() {
+      const checkboxes = document.querySelectorAll('.report-checkbox:checked');
+      const reportIds = Array.from(checkboxes).map(cb => parseInt(cb.dataset.id));
+
+      if (reportIds.length === 0) {
+        alert('確認する日報を選択してください');
+        return;
+      }
+
+      if (!confirm(`${reportIds.length}件の日報を確認済みにしますか？`)) return;
+
+      try {
+        const res = await fetch('/api/reports/bulk-confirm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ report_ids: reportIds })
+        });
+
+        if (res.ok) {
+          const result = await res.json();
+          alert(`${result.confirmed_count}件の日報を確認済みにしました`);
+          document.getElementById('select-all').checked = false;
+          loadReports();
+        } else {
+          const err = await res.json();
+          alert('一括確認に失敗しました: ' + err.error);
+        }
+      } catch (error) {
+        console.error('一括確認エラー:', error);
+        alert('一括確認に失敗しました');
+      }
+    }
+  </script>
+</body>
+</html>

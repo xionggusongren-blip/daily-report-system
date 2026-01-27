@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>通知設定 - 営業日報システム</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .settings-grid {
+      display: grid;
+      gap: 1.5rem;
+      max-width: 800px;
+    }
+    .setting-card {
+      background: white;
+      border: 1px solid var(--border-color);
+      border-radius: 0.5rem;
+      padding: 1.5rem;
+    }
+    .setting-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .setting-title {
+      font-weight: 600;
+      font-size: 1rem;
+    }
+    .setting-description {
+      color: var(--text-muted);
+      font-size: 0.875rem;
+      margin-bottom: 1rem;
+    }
+    .toggle-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .toggle-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.75rem;
+      background: var(--background-color);
+      border-radius: 0.375rem;
+    }
+    .toggle-label {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+    .toggle-label-main {
+      font-weight: 500;
+    }
+    .toggle-label-sub {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+    .toggle-switch {
+      position: relative;
+      width: 48px;
+      height: 26px;
+    }
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #cbd5e1;
+      transition: 0.3s;
+      border-radius: 26px;
+    }
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 20px;
+      width: 20px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: 0.3s;
+      border-radius: 50%;
+    }
+    .toggle-switch input:checked + .toggle-slider {
+      background-color: var(--primary-color);
+    }
+    .toggle-switch input:checked + .toggle-slider:before {
+      transform: translateX(22px);
+    }
+    .channel-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 0.25rem 0.5rem;
+      border-radius: 0.25rem;
+      font-size: 0.75rem;
+      margin-right: 0.5rem;
+    }
+    .channel-badge.app {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+    .channel-badge.email {
+      background: #fef3c7;
+      color: #92400e;
+    }
+    .status-section {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 0.5rem;
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .status-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.5rem 0;
+    }
+    .status-item:not(:last-child) {
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .status-ok {
+      color: #059669;
+    }
+    .status-ng {
+      color: #dc2626;
+    }
+  </style>
+</head>
+<body>
+  <!-- ヘッダー -->
+  <header class="header">
+    <div class="header-content">
+      <a href="/dashboard.html" class="logo">営業日報システム</a>
+      <nav class="nav" id="main-nav">
+        <a href="/dashboard.html" class="nav-link">ホーム</a>
+        <a href="/report-list.html" class="nav-link">日報一覧</a>
+        <a href="/calendar.html" class="nav-link">カレンダー</a>
+      </nav>
+      <div class="user-info">
+        <span class="user-name" id="user-name">-</span>
+        <button class="btn btn-outline btn-sm btn-logout" onclick="logout()">ログアウト</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- メインコンテンツ -->
+  <main class="main-content">
+    <h1 class="page-title">🔔 通知設定</h1>
+
+    <div class="status-section">
+      <h4 style="margin: 0 0 0.75rem 0; font-size: 0.875rem;">通知チャネル状態</h4>
+      <div class="status-item">
+        <span>📱 アプリ内通知</span>
+        <span class="status-ok">✓ 有効</span>
+      </div>
+      <div class="status-item">
+        <span>📧 メール通知</span>
+        <span id="email-status" class="status-ng">✗ 未設定</span>
+      </div>
+      <div style="margin-top: 0.75rem;">
+        <a href="/admin-email.html" class="btn btn-sm btn-outline">メール設定を開く</a>
+      </div>
+    </div>
+
+    <div class="settings-grid">
+      <!-- 日報提出通知 -->
+      <div class="setting-card">
+        <div class="setting-header">
+          <div class="setting-title">📝 日報提出通知</div>
+          <div>
+            <span class="channel-badge app">📱 アプリ</span>
+            <span class="channel-badge email">📧 メール</span>
+          </div>
+        </div>
+        <div class="setting-description">
+          部下が日報を提出した時に、上長・管理者に通知します
+        </div>
+        <div class="toggle-group">
+          <div class="toggle-item">
+            <div class="toggle-label">
+              <span class="toggle-label-main">アプリ内通知</span>
+              <span class="toggle-label-sub">ダッシュボードに通知バーを表示</span>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="submitted_app" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="toggle-item">
+            <div class="toggle-label">
+              <span class="toggle-label-main">メール通知</span>
+              <span class="toggle-label-sub">上長・管理者にメールを送信</span>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="submitted_email" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- 確認完了通知 -->
+      <div class="setting-card">
+        <div class="setting-header">
+          <div class="setting-title">✅ 確認完了通知</div>
+          <div>
+            <span class="channel-badge email">📧 メール</span>
+          </div>
+        </div>
+        <div class="setting-description">
+          日報が確認された時に、日報作成者に通知します
+        </div>
+        <div class="toggle-group">
+          <div class="toggle-item">
+            <div class="toggle-label">
+              <span class="toggle-label-main">メール通知</span>
+              <span class="toggle-label-sub">日報作成者にメールを送信</span>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="confirmed_email" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- 差し戻し通知 -->
+      <div class="setting-card">
+        <div class="setting-header">
+          <div class="setting-title">↩️ 差し戻し通知</div>
+          <div>
+            <span class="channel-badge email">📧 メール</span>
+          </div>
+        </div>
+        <div class="setting-description">
+          日報が差し戻された時に、日報作成者に通知します
+        </div>
+        <div class="toggle-group">
+          <div class="toggle-item">
+            <div class="toggle-label">
+              <span class="toggle-label-main">メール通知</span>
+              <span class="toggle-label-sub">日報作成者にメールを送信</span>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="rejected_email" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- コメント通知 -->
+      <div class="setting-card">
+        <div class="setting-header">
+          <div class="setting-title">💬 コメント通知</div>
+          <div>
+            <span class="channel-badge app">📱 アプリ</span>
+            <span class="channel-badge email">📧 メール</span>
+          </div>
+        </div>
+        <div class="setting-description">
+          日報にコメントが追加された時に、関係者に通知します
+        </div>
+        <div class="toggle-group">
+          <div class="toggle-item">
+            <div class="toggle-label">
+              <span class="toggle-label-main">アプリ内通知</span>
+              <span class="toggle-label-sub">ダッシュボードに通知バーを表示</span>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="comment_app" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="toggle-item">
+            <div class="toggle-label">
+              <span class="toggle-label-main">メール通知</span>
+              <span class="toggle-label-sub">日報作成者と過去コメント者にメールを送信</span>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="comment_email" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top: 1.5rem; max-width: 800px;">
+      <button class="btn btn-primary" onclick="saveSettings()">設定を保存</button>
+    </div>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const user = await checkAuth();
+      if (!user) return;
+
+      if (user.role !== 'admin') {
+        alert('この画面にアクセスする権限がありません');
+        window.location.href = '/dashboard.html';
+        return;
+      }
+
+      loadSettings();
+      checkEmailStatus();
+    });
+
+    async function loadSettings() {
+      try {
+        const res = await fetch('/api/settings/notifications');
+        const settings = await res.json();
+        
+        if (settings) {
+          document.getElementById('submitted_app').checked = settings.submitted_app !== 0;
+          document.getElementById('submitted_email').checked = settings.submitted_email !== 0;
+          document.getElementById('confirmed_email').checked = settings.confirmed_email !== 0;
+          document.getElementById('rejected_email').checked = settings.rejected_email !== 0;
+          document.getElementById('comment_app').checked = settings.comment_app !== 0;
+          document.getElementById('comment_email').checked = settings.comment_email !== 0;
+        }
+      } catch (error) {
+        console.error('設定読み込みエラー:', error);
+      }
+    }
+
+    async function checkEmailStatus() {
+      try {
+        const res = await fetch('/api/settings/email');
+        const settings = await res.json();
+        
+        const statusEl = document.getElementById('email-status');
+        if (settings.smtp_host && settings.smtp_user) {
+          statusEl.textContent = '✓ 設定済み';
+          statusEl.className = 'status-ok';
+        }
+      } catch (error) {
+        console.error('メール設定確認エラー:', error);
+      }
+    }
+
+    async function saveSettings() {
+      const data = {
+        submitted_app: document.getElementById('submitted_app').checked ? 1 : 0,
+        submitted_email: document.getElementById('submitted_email').checked ? 1 : 0,
+        confirmed_email: document.getElementById('confirmed_email').checked ? 1 : 0,
+        rejected_email: document.getElementById('rejected_email').checked ? 1 : 0,
+        comment_app: document.getElementById('comment_app').checked ? 1 : 0,
+        comment_email: document.getElementById('comment_email').checked ? 1 : 0
+      };
+
+      try {
+        const res = await fetch('/api/settings/notifications', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        
+        const result = await res.json();
+        
+        if (result.success) {
+          alert('設定を保存しました');
+        } else {
+          alert('エラー: ' + (result.error || '保存に失敗しました'));
+        }
+      } catch (error) {
+        alert('エラー: ' + error.message);
+      }
+    }
+  </script>
+</body>
+</html>
