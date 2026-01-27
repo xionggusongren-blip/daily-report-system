@@ -1917,9 +1917,10 @@ app.get('/api/rankings/monthly', requireAuth, (req, res) => {
     const companionRanking = [];
     const companionStmt = db.prepare(`
       SELECT u.id, u.name, COUNT(*) as count
-      FROM customer_visits cv
+      FROM visit_companions vc
+      JOIN customer_visits cv ON vc.visit_id = cv.id
       JOIN daily_reports dr ON cv.report_id = dr.id
-      JOIN users u ON cv.companion_user_id = u.id
+      JOIN users u ON vc.user_id = u.id
       WHERE dr.report_date BETWEEN ? AND ? AND dr.status != 'draft'
       GROUP BY u.id
       ORDER BY count DESC
