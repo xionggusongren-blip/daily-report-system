@@ -50,18 +50,24 @@
         <h2 class="card-title" style="margin: 0; color: #6d28d9;">✨ AIで訪問記録を作成</h2>
         <button type="button" onclick="hideAiMemoInput()" style="background: none; border: none; font-size: 1.25rem; cursor: pointer; color: #64748b;">×</button>
       </div>
-      <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 0.5rem;">
-        訪問先ごとに1行ずつ入力してください。AIが訪問記録に変換します。
-      </p>
       <div style="font-size: 0.8rem; color: #64748b; margin-bottom: 1rem; background: #f8fafc; padding: 0.75rem; border-radius: 0.5rem;">
-        <div style="font-weight: 600; color: #475569; margin-bottom: 0.5rem;">📝 入力フォーマット</div>
-        <div style="margin-bottom: 0.25rem;">• <span style="color: #2563eb; font-weight: 500;">会社名</span>　商談内容（会社名の後にスペース）</div>
+        <div style="font-weight: 600; color: #475569; margin-bottom: 0.5rem;">📝 入力ルール</div>
+        <div style="margin-bottom: 0.5rem; padding: 0.5rem; background: #dbeafe; border-radius: 0.25rem; color: #1e40af;">
+          <strong>⚠️ 1行 = 1訪問先</strong>（改行で訪問先を区切る）
+        </div>
+        <div style="margin-bottom: 0.25rem;">• 行の先頭に<span style="color: #2563eb; font-weight: 500;">訪問先名</span>、続けて商談内容</div>
         <div style="margin-bottom: 0.25rem;">• 同行者は「<span style="color: #7c3aed; font-weight: 500;">○○と同行</span>」「<span style="color: #7c3aed; font-weight: 500;">○○部長と</span>」で記載</div>
-        <div style="color: #94a3b8; font-size: 0.75rem; margin-top: 0.5rem;">例: 滝沢電機　山田部長と同行　新規ヒアリング、見積依頼</div>
+        <div style="margin-bottom: 0.25rem;">• 商談中に出てくるメーカー名は訪問先にはなりません</div>
+        <div style="color: #64748b; font-size: 0.75rem; margin-top: 0.75rem; padding-top: 0.5rem; border-top: 1px solid #e2e8f0;">
+          <div style="margin-bottom: 0.25rem;"><strong>例1）2社訪問の場合（2行で入力）</strong></div>
+          <div style="font-family: monospace; background: #f1f5f9; padding: 0.25rem 0.5rem; border-radius: 0.25rem; margin-bottom: 0.5rem;">滝沢電機　新規ヒアリング<br>アジア電気　定期訪問</div>
+          <div style="margin-bottom: 0.25rem;"><strong>例2）1社でメーカー名が出る場合（1行で入力）</strong></div>
+          <div style="font-family: monospace; background: #f1f5f9; padding: 0.25rem 0.5rem; border-radius: 0.25rem;">滝沢電機　村田・TDKのコンデンサ提案</div>
+        </div>
       </div>
       <div class="form-group">
         <textarea id="ai-memo-input" class="form-textarea" rows="5"
-          placeholder="滝沢電機　山田部長と同行　新規案件ヒアリング、コンデンサ見積依頼&#10;アジア電気　定期訪問、リピート受注確定&#10;ABC商事　佐藤課長と　サンプル提出、好感触、次回見積予定"></textarea>
+          placeholder="滝沢電機　山田部長と同行　新規案件ヒアリング、村田コンデンサ見積依頼&#10;アジア電気　定期訪問、TDKインダクタ受注確定&#10;ABC商事　佐藤課長と　サンプル提出、好感触"></textarea>
       </div>
       <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
         <button type="button" class="btn btn-outline" onclick="hideAiMemoInput()">キャンセル</button>
