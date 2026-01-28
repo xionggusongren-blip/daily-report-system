@@ -379,6 +379,14 @@
         const users = await res.json();
         
         const select = document.getElementById('user-select');
+
+        // 全員表示オプションを追加（自分の次に）
+        const allOpt = document.createElement('option');
+        allOpt.value = 'all';
+        allOpt.textContent = '── 全員 ──';
+        select.appendChild(allOpt);
+
+        // 他のユーザーを追加
         users.forEach(u => {
           if (u.id !== currentUserId) {
             const opt = document.createElement('option');
@@ -387,12 +395,6 @@
             select.appendChild(opt);
           }
         });
-        
-        // 全員表示オプションを追加
-        const allOpt = document.createElement('option');
-        allOpt.value = 'all';
-        allOpt.textContent = '── 全員 ──';
-        select.appendChild(allOpt);
       } catch (error) {
         console.error('ユーザー一覧読み込みエラー:', error);
       }
