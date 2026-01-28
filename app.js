@@ -113,6 +113,7 @@ setInterval(saveDatabase, 5 * 60 * 1000);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/docs', express.static(path.join(__dirname, 'docs')));
 
 // セッション設定
 app.use(session({
