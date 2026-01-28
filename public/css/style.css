@@ -138,6 +138,26 @@ body {
   gap: 1rem;
 }
 
+.help-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  background: #e2e8f0;
+  color: #475569;
+  text-decoration: none;
+  font-weight: bold;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.help-link:hover {
+  background: #3b82f6;
+  color: white;
+}
+
 .user-name {
   font-size: 0.875rem;
   color: var(--text-muted);

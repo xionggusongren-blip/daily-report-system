@@ -6,6 +6,27 @@
   <title>日報 - 営業日報システム</title>
   <link rel="stylesheet" href="/css/style.css">
   <style>
+    /* ヘルプリンク */
+    .help-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.75rem;
+      height: 1.75rem;
+      border-radius: 50%;
+      background: #e2e8f0;
+      color: #475569;
+      text-decoration: none;
+      font-weight: bold;
+      font-size: 0.9rem;
+      margin-right: 0.75rem;
+      transition: all 0.2s;
+    }
+    .help-link:hover {
+      background: #3b82f6;
+      color: white;
+    }
+
     /* 日報作成エリア */
     .report-prompt {
       background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
@@ -371,6 +392,7 @@
       </nav>
       
       <div class="user-info">
+        <a href="/docs/manual.html" target="_blank" class="help-link" title="操作マニュアル">?</a>
         <span class="user-name" id="user-name">-</span>
         <button class="btn btn-outline btn-sm btn-logout" onclick="logout()">ログアウト</button>
       </div>

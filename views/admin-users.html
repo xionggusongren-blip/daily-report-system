@@ -158,6 +158,7 @@
         <a href="/calendar.html" class="nav-link">カレンダー</a>
       </nav>
       <div class="user-info">
+        <a href="/docs/manual.html" target="_blank" class="help-link" title="操作マニュアル">?</a>
         <span class="user-name" id="user-name">-</span>
         <button class="btn btn-outline btn-sm btn-logout" onclick="logout()">ログアウト</button>
       </div>
@@ -433,6 +434,7 @@
         return `
           <div class="user-card">
             <div class="user-info">
+        <a href="/docs/manual.html" target="_blank" class="help-link" title="操作マニュアル">?</a>
               <div class="user-avatar">${escapeHtml(initial)}</div>
               <div class="user-details">
                 <h4>${escapeHtml(u.name)} <span class="role-badge ${role.class}">${role.label}</span></h4>
