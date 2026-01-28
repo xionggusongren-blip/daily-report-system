@@ -1,20 +1,18 @@
 @echo off
-chcp 65001 > nul
-title 日報システム - 停止
+title Stop Server
 
 echo ========================================
-echo   日報システム 停止
+echo   Stopping Server...
 echo ========================================
 echo.
 
-REM Node.jsプロセスを検索して停止
-tasklist /fi "imagename eq node.exe" | find "node.exe" >nul
+tasklist /fi "imagename eq node.exe" 2>nul | find /i "node.exe" >nul
 if %errorlevel% equ 0 (
-    echo Node.jsプロセスを停止しています...
+    echo Stopping Node.js process...
     taskkill /f /im node.exe >nul 2>&1
-    echo [完了] サーバーを停止しました
+    echo [OK] Server stopped.
 ) else (
-    echo [情報] 起動中のサーバーはありません
+    echo [INFO] No server running.
 )
 
 echo.
