@@ -12,16 +12,63 @@ const path = require('path');
 // 文字列正規化（全角・半角、㈱・株式会社などを統一）
 function normalizeString(str) {
   if (!str) return '';
-  return str
-    .replace(/[\u3000]/g, ' ')  // 全角スペース→半角
-    .replace(/[Ａ-Ｚａ-ｚ０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0))  // 全角英数→半角
-    .replace(/[ァ-ン]/g, s => String.fromCharCode(s.charCodeAt(0) - 0x60))  // 全角カナ→半角
+
+  // 半角カナ→全角カナ変換テーブル
+  const kanaMap = {
+    'ｱ':'ア','ｲ':'イ','ｳ':'ウ','ｴ':'エ','ｵ':'オ',
+    'ｶ':'カ','ｷ':'キ','ｸ':'ク','ｹ':'ケ','ｺ':'コ',
+    'ｻ':'サ','ｼ':'シ','ｽ':'ス','ｾ':'セ','ｿ':'ソ',
+    'ﾀ':'タ','ﾁ':'チ','ﾂ':'ツ','ﾃ':'テ','ﾄ':'ト',
+    'ﾅ':'ナ','ﾆ':'ニ','ﾇ':'ヌ','ﾈ':'ネ','ﾉ':'ノ',
+    'ﾊ':'ハ','ﾋ':'ヒ','ﾌ':'フ','ﾍ':'ヘ','ﾎ':'ホ',
+    'ﾏ':'マ','ﾐ':'ミ','ﾑ':'ム','ﾒ':'メ','ﾓ':'モ',
+    'ﾔ':'ヤ','ﾕ':'ユ','ﾖ':'ヨ',
+    'ﾗ':'ラ','ﾘ':'リ','ﾙ':'ル','ﾚ':'レ','ﾛ':'ロ',
+    'ﾜ':'ワ','ｦ':'ヲ','ﾝ':'ン',
+    'ｧ':'ァ','ｨ':'ィ','ｩ':'ゥ','ｪ':'ェ','ｫ':'ォ',
+    'ｬ':'ャ','ｭ':'ュ','ｮ':'ョ','ｯ':'ッ',
+    'ﾞ':'゛','ﾟ':'゜','ｰ':'ー'
+  };
+
+  let result = str;
+
+  // 半角カナ→全角カナ
+  result = result.replace(/[ｱ-ﾝｧ-ｮｯｰﾞﾟ]/g, s => kanaMap[s] || s);
+
+  // 濁点・半濁点の結合（ｶﾞ→ガ など）
+  result = result
+    .replace(/カ゛/g, 'ガ').replace(/キ゛/g, 'ギ').replace(/ク゛/g, 'グ').replace(/ケ゛/g, 'ゲ').replace(/コ゛/g, 'ゴ')
+    .replace(/サ゛/g, 'ザ').replace(/シ゛/g, 'ジ').replace(/ス゛/g, 'ズ').replace(/セ゛/g, 'ゼ').replace(/ソ゛/g, 'ゾ')
+    .replace(/タ゛/g, 'ダ').replace(/チ゛/g, 'ヂ').replace(/ツ゛/g, 'ヅ').replace(/テ゛/g, 'デ').replace(/ト゛/g, 'ド')
+    .replace(/ハ゛/g, 'バ').replace(/ヒ゛/g, 'ビ').replace(/フ゛/g, 'ブ').replace(/ヘ゛/g, 'ベ').replace(/ホ゛/g, 'ボ')
+    .replace(/ハ゜/g, 'パ').replace(/ヒ゜/g, 'ピ').replace(/フ゜/g, 'プ').replace(/ヘ゜/g, 'ペ').replace(/ホ゜/g, 'ポ')
+    .replace(/ウ゛/g, 'ヴ');
+
+  // 全角英数→半角
+  result = result.replace(/[Ａ-Ｚａ-ｚ０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
+
+  // 括弧の統一
+  result = result
+    .replace(/（/g, '(').replace(/）/g, ')')
+    .replace(/［/g, '[').replace(/］/g, ']')
+    .replace(/｛/g, '{').replace(/｝/g, '}');
+
+  // 会社形態の除去
+  result = result
     .replace(/株式会社|㈱|\(株\)|（株）/g, '')
     .replace(/有限会社|㈲|\(有\)|（有）/g, '')
-    .replace(/合同会社/g, '')
-    .replace(/[\s\-－・]/g, '')
-    .toLowerCase()
-    .trim();
+    .replace(/合同会社|合同会社/g, '')
+    .replace(/一般財団法人|\(一財\)|（一財）/g, '')
+    .replace(/一般社団法人|\(一社\)|（一社）/g, '');
+
+  // スペース、記号の除去
+  result = result
+    .replace(/[\s\u3000]/g, '')  // スペース
+    .replace(/[\-－ー―]/g, '')   // ハイフン・長音
+    .replace(/[・･]/g, '')        // 中点
+    .replace(/[,，、。.]/g, '');  // 句読点
+
+  return result.toLowerCase().trim();
 }
 
 async function linkVisitsToMaster() {
