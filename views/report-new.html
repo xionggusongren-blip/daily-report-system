@@ -51,30 +51,17 @@
         <button type="button" onclick="hideAiMemoInput()" style="background: none; border: none; font-size: 1.25rem; cursor: pointer; color: #64748b;">×</button>
       </div>
 
-      <!-- 構造化入力フォーム -->
-      <div id="ai-visit-entries">
-        <div class="ai-visit-entry" data-index="0">
-          <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem; align-items: center;">
-            <span style="font-weight: 600; color: #6d28d9; min-width: 60px;">訪問先1</span>
-            <input type="text" class="form-input ai-company-name" placeholder="会社名（例：滝沢電機）" style="flex: 1;">
-            <input type="text" class="form-input ai-companion" placeholder="同行者（例：山田部長）" style="width: 140px;">
-            <button type="button" class="btn-remove-visit" onclick="removeAiVisitEntry(this)" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 1.2rem; padding: 0 0.25rem;" title="削除">×</button>
-          </div>
-          <textarea class="form-textarea ai-visit-content" rows="2" placeholder="商談内容をコピペまたは入力（例：新規案件ヒアリング、村田コンデンサ見積依頼、次回4月訪問予定）" style="margin-bottom: 0.75rem;"></textarea>
-        </div>
+      <div style="font-size: 0.8rem; color: #64748b; margin-bottom: 0.75rem;">
+        下記の形式で入力してください。2社以上ある場合は「---」の行で区切ります。
       </div>
 
-      <button type="button" onclick="addAiVisitEntry()" style="width: 100%; padding: 0.5rem; margin-bottom: 1rem; border: 2px dashed #c4b5fd; border-radius: 0.5rem; background: transparent; color: #7c3aed; cursor: pointer; font-size: 0.9rem;">
-        ＋ 訪問先を追加
-      </button>
-
-      <div style="font-size: 0.75rem; color: #64748b; margin-bottom: 1rem; padding: 0.5rem; background: #f1f5f9; border-radius: 0.25rem;">
-        💡 商談内容に他社名（メーカー名など）が出てきても、その会社への訪問にはなりません
+      <div class="form-group">
+        <textarea id="ai-memo-input" class="form-textarea" rows="14" style="font-family: monospace; font-size: 0.9rem; line-height: 1.5;"></textarea>
       </div>
 
       <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
         <button type="button" class="btn btn-outline" onclick="hideAiMemoInput()">キャンセル</button>
-        <button type="button" class="btn" onclick="generateFromStructuredInput()" style="background: linear-gradient(135deg, #8b5cf6, #6366f1); color: white; border: none;">
+        <button type="button" class="btn" onclick="generateFromMemo()" style="background: linear-gradient(135deg, #8b5cf6, #6366f1); color: white; border: none;">
           ✨ 訪問記録を生成
         </button>
       </div>
@@ -1496,124 +1483,30 @@
     }
 
     // AIメモ入力エリア表示
-    let aiVisitEntryIndex = 1;
+    const aiInputTemplate = `【訪問先】
+【同行者】
+【内容】
+
+
+---（2社目がある場合は上の形式をコピペ）---`;
+
     function showAiMemoInput() {
       document.getElementById('ai-memo-section').style.display = 'block';
-      // 最初の入力欄にフォーカス
-      const firstInput = document.querySelector('.ai-company-name');
-      if (firstInput) firstInput.focus();
+      const textarea = document.getElementById('ai-memo-input');
+      if (!textarea.value.trim()) {
+        textarea.value = aiInputTemplate;
+      }
+      textarea.focus();
+      textarea.setSelectionRange(5, 5); // 【訪問先】の後ろにカーソル
     }
 
     // AIメモ入力エリア非表示
     function hideAiMemoInput() {
       document.getElementById('ai-memo-section').style.display = 'none';
-      // 入力をリセット（1つ目だけ残す）
-      const container = document.getElementById('ai-visit-entries');
-      container.innerHTML = `
-        <div class="ai-visit-entry" data-index="0">
-          <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem; align-items: center;">
-            <span style="font-weight: 600; color: #6d28d9; min-width: 60px;">訪問先1</span>
-            <input type="text" class="form-input ai-company-name" placeholder="会社名（例：滝沢電機）" style="flex: 1;">
-            <input type="text" class="form-input ai-companion" placeholder="同行者（例：山田部長）" style="width: 140px;">
-            <button type="button" class="btn-remove-visit" onclick="removeAiVisitEntry(this)" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 1.2rem; padding: 0 0.25rem;" title="削除">×</button>
-          </div>
-          <textarea class="form-textarea ai-visit-content" rows="2" placeholder="商談内容をコピペまたは入力（例：新規案件ヒアリング、村田コンデンサ見積依頼、次回4月訪問予定）" style="margin-bottom: 0.75rem;"></textarea>
-        </div>
-      `;
-      aiVisitEntryIndex = 1;
+      document.getElementById('ai-memo-input').value = '';
     }
 
-    // 訪問先入力行を追加
-    function addAiVisitEntry() {
-      aiVisitEntryIndex++;
-      const container = document.getElementById('ai-visit-entries');
-      const newEntry = document.createElement('div');
-      newEntry.className = 'ai-visit-entry';
-      newEntry.dataset.index = aiVisitEntryIndex - 1;
-      newEntry.innerHTML = `
-        <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem; align-items: center;">
-          <span style="font-weight: 600; color: #6d28d9; min-width: 60px;">訪問先${aiVisitEntryIndex}</span>
-          <input type="text" class="form-input ai-company-name" placeholder="会社名（例：滝沢電機）" style="flex: 1;">
-          <input type="text" class="form-input ai-companion" placeholder="同行者（例：山田部長）" style="width: 140px;">
-          <button type="button" class="btn-remove-visit" onclick="removeAiVisitEntry(this)" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 1.2rem; padding: 0 0.25rem;" title="削除">×</button>
-        </div>
-        <textarea class="form-textarea ai-visit-content" rows="2" placeholder="商談内容をコピペまたは入力" style="margin-bottom: 0.75rem;"></textarea>
-      `;
-      container.appendChild(newEntry);
-      newEntry.querySelector('.ai-company-name').focus();
-    }
-
-    // 訪問先入力行を削除
-    function removeAiVisitEntry(btn) {
-      const entry = btn.closest('.ai-visit-entry');
-      const container = document.getElementById('ai-visit-entries');
-      if (container.children.length > 1) {
-        entry.remove();
-        // 番号を振り直す
-        container.querySelectorAll('.ai-visit-entry').forEach((e, i) => {
-          e.querySelector('span').textContent = `訪問先${i + 1}`;
-        });
-        aiVisitEntryIndex = container.children.length;
-      }
-    }
-
-    // 構造化入力からAI生成
-    async function generateFromStructuredInput() {
-      const entries = document.querySelectorAll('.ai-visit-entry');
-      const memoLines = [];
-
-      entries.forEach(entry => {
-        const company = entry.querySelector('.ai-company-name').value.trim();
-        const companion = entry.querySelector('.ai-companion').value.trim();
-        const content = entry.querySelector('.ai-visit-content').value.trim();
-
-        if (company || content) {
-          let line = company || '（会社名なし）';
-          if (companion) line += `　${companion}と同行`;
-          if (content) line += `　${content}`;
-          memoLines.push(line);
-        }
-      });
-
-      if (memoLines.length === 0) {
-        alert('訪問先を入力してください');
-        return;
-      }
-
-      const memo = memoLines.join('\n');
-      console.log('構造化入力からメモ生成:', memo);
-
-      // 生成中表示
-      document.getElementById('ai-generating').style.display = 'block';
-
-      try {
-        const res = await fetch('/api/ai/generate-report', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ memo, visits: [] })
-        });
-
-        const data = await res.json();
-        document.getElementById('ai-generating').style.display = 'none';
-
-        if (res.ok) {
-          hideAiMemoInput();
-          if (data.extracted_visits && data.extracted_visits.length > 0) {
-            showAiVisitsModal(data.extracted_visits);
-          } else {
-            alert('訪問先の処理に失敗しました。');
-          }
-        } else {
-          alert('AI生成エラー: ' + (data.error || '不明なエラー'));
-        }
-      } catch (error) {
-        document.getElementById('ai-generating').style.display = 'none';
-        console.error('AI生成エラー:', error);
-        alert('AI生成に失敗しました: ' + error.message);
-      }
-    }
-
-    // メモからAI生成（旧バージョン、互換性のため残す）
+    // メモからAI生成
     async function generateFromMemo() {
       const memo = document.getElementById('ai-memo-input')?.value?.trim();
       if (!memo) {
