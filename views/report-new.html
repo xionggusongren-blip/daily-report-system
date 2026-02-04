@@ -31,16 +31,13 @@
       <span id="autosave-status" style="font-size: 0.8rem; color: #64748b;"></span>
     </div>
 
-    <!-- クイックアクション（訪問追加を目立たせる） -->
+    <!-- クイックアクション -->
     <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.5rem;">
-      <button type="button" class="btn btn-primary" onclick="addVisit()" style="font-size: 1rem; padding: 0.75rem 1.25rem;">
-        📍 訪問を記録する
+      <button type="button" class="btn" id="ai-generate-btn" onclick="showAiMemoInput()" style="display: none; font-size: 1rem; padding: 0.75rem 1.25rem; background: linear-gradient(135deg, #8b5cf6, #6366f1); color: white; border: none;">
+        ✨ AIで訪問記録を作成
       </button>
-      <button type="button" class="btn btn-outline btn-sm" onclick="showFavorites()">⭐ お気に入り</button>
-      <button type="button" class="btn btn-outline btn-sm" onclick="showTemplates()">📝 テンプレート</button>
-      <button type="button" class="btn btn-outline btn-sm" onclick="copyFromPrevious()">📋 前日コピー</button>
-      <button type="button" class="btn btn-sm" id="ai-generate-btn" onclick="showAiMemoInput()" style="display: none; background: linear-gradient(135deg, #8b5cf6, #6366f1); color: white; border: none;">
-        ✨ AIで生成
+      <button type="button" class="btn btn-outline" onclick="addVisit()">
+        📍 手動で追加
       </button>
     </div>
 
@@ -773,39 +770,12 @@
       container.innerHTML = countInfo + items.map(item => {
         const assignedName = item.assigned_user_name ? `<span style="font-size: 0.7rem; color: #3b82f6; margin-left: 0.5rem;">担当: ${escapeHtml(item.assigned_user_name)}</span>` : '';
         return `
-          <div class="customer-item" style="display: flex; justify-content: space-between; align-items: center;">
-            <div onclick="selectVisitTarget('${visitType}', ${item.id}, '${escapeHtml(item.name)}')" style="flex: 1; cursor: pointer;">
-              <div class="customer-item-name">${escapeHtml(item.name)}${assignedName}</div>
-              <div class="customer-item-code">${item.customer_code || item.supplier_code || ''}</div>
-            </div>
-            <button type="button" class="btn btn-sm" style="padding: 0.25rem 0.5rem; background: none; border: none; font-size: 1.2rem;" 
-              onclick="event.stopPropagation(); addToFavorite('${visitType}', ${item.id})" title="お気に入りに追加">
-              ⭐
-            </button>
+          <div class="customer-item" onclick="selectVisitTarget('${visitType}', ${item.id}, '${escapeHtml(item.name)}')" style="cursor: pointer;">
+            <div class="customer-item-name">${escapeHtml(item.name)}${assignedName}</div>
+            <div class="customer-item-code">${item.customer_code || item.supplier_code || ''}</div>
           </div>
         `;
       }).join('');
-    }
-
-    // お気に入りに追加
-    async function addToFavorite(targetType, id) {
-      try {
-        const body = targetType === 'supplier' 
-          ? { target_type: 'supplier', supplier_id: id }
-          : { target_type: 'customer', customer_id: id };
-        
-        const res = await fetch('/api/favorites', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body)
-        });
-        
-        if (res.ok) {
-          alert('お気に入りに追加しました');
-        }
-      } catch (e) {
-        alert('お気に入り追加に失敗しました');
-      }
     }
 
     // 訪問先選択
@@ -1151,250 +1121,8 @@
     }
 
     // ============================================
-    // 前日コピー機能
-    // ============================================
-    async function copyFromPrevious() {
-      const reportDate = document.getElementById('report_date').value || getTodayString();
-      
-      try {
-        const res = await fetch(`/api/reports/copy/latest?before_date=${reportDate}`);
-        if (!res.ok) {
-          alert('コピー元の日報が見つかりません');
-          return;
-        }
-
-        const data = await res.json();
-        
-        if (!confirm(`${data.report_date} の日報からコピーします。現在の入力内容は上書きされます。よろしいですか？`)) {
-          return;
-        }
-
-        // フォームにセット
-        document.getElementById('work_style').value = data.work_style || '';
-        document.getElementById('work_content').value = data.work_content || '';
-        document.getElementById('achievements').value = data.achievements || '';
-        document.getElementById('issues').value = data.issues || '';
-        document.getElementById('consultation').value = data.consultation || '';
-
-        // タスククリア＆コピー
-        document.getElementById('tasks-container').innerHTML = '';
-        taskCount = 0;
-        if (data.tasks) {
-          data.tasks.forEach(t => addTask(t.content, false)); // 完了状態はリセット
-        }
-
-        // 訪問記録クリア＆コピー
-        document.getElementById('visits-container').innerHTML = '';
-        visitCount = 0;
-        if (data.visits) {
-          data.visits.forEach(v => addVisit({
-            visit_type: v.visit_type,
-            customer_id: v.customer_id,
-            supplier_id: v.supplier_id,
-            customer_name: v.customer_name || v.supplier_name || v.customer_name_manual,
-            visit_purpose: v.visit_purpose,
-            meeting_content: '', // 商談内容はクリア
-            deal_amount: v.deal_amount,
-            probability: v.probability,
-            next_action: '',
-            next_action_date: null,
-            manufacturer_ids: v.manufacturers ? v.manufacturers.map(m => m.id) : [],
-            companion_ids: v.companions ? v.companions.map(c => c.id) : []
-          }));
-        }
-
-        alert('前日の日報をコピーしました');
-      } catch (error) {
-        console.error('コピーエラー:', error);
-        alert('コピーに失敗しました');
-      }
-    }
-
-    // ============================================
-    // テンプレート機能
-    // ============================================
-    async function showTemplates() {
-      try {
-        const res = await fetch('/api/templates');
-        const templates = await res.json();
-
-        if (templates.length === 0) {
-          if (confirm('テンプレートがありません。テンプレート管理画面を開きますか？')) {
-            window.open('/templates.html', '_blank');
-          }
-          return;
-        }
-
-        // モーダル作成
-        let modalHtml = `
-          <div id="templates-modal" class="modal">
-            <div class="modal-content">
-              <div class="modal-header">
-                <h3>📝 テンプレートを選択</h3>
-                <button type="button" class="modal-close" onclick="closeTemplatesModal()">&times;</button>
-              </div>
-              <div class="modal-body">
-                <div class="customer-list">
-                  ${templates.map(t => `
-                    <div class="customer-item" onclick="selectTemplate(${t.id})" style="cursor: pointer;">
-                      <div class="customer-item-name">${escapeHtml(t.name)}</div>
-                      <div class="customer-item-code" style="font-size: 0.75rem; color: #64748b; margin-top: 0.25rem;">
-                        ${t.is_shared ? '🌐 共有' : '👤 個人'}
-                      </div>
-                    </div>
-                  `).join('')}
-                </div>
-                <div style="margin-top: 1rem; text-align: center;">
-                  <a href="/templates.html" target="_blank" style="font-size: 0.8rem; color: #64748b;">テンプレートを管理 →</a>
-                </div>
-              </div>
-            </div>
-          </div>
-        `;
-        
-        // 既存モーダルを削除
-        const existingModal = document.getElementById('templates-modal');
-        if (existingModal) existingModal.remove();
-        
-        document.body.insertAdjacentHTML('beforeend', modalHtml);
-        
-        // テンプレートデータを保存
-        window.loadedTemplates = templates;
-      } catch (error) {
-        console.error('テンプレートエラー:', error);
-        alert('テンプレートの読み込みに失敗しました');
-      }
-    }
-
-    function closeTemplatesModal() {
-      const modal = document.getElementById('templates-modal');
-      if (modal) modal.remove();
-    }
-
-    function selectTemplate(templateId) {
-      const template = window.loadedTemplates?.find(t => t.id === templateId);
-      if (template) {
-        applyTemplate(template);
-        closeTemplatesModal();
-      }
-    }
-
-    function applyTemplate(template) {
-      // テンプレート名から勤務形態を自動設定
-      const templateName = template.name || '';
-      if (templateName.includes('外出') || templateName.includes('訪問')) {
-        document.getElementById('work_style').value = 'field';
-      } else if (templateName.includes('内勤') || templateName.includes('オフィス')) {
-        document.getElementById('work_style').value = 'office';
-      } else if (templateName.includes('テレワーク') || templateName.includes('在宅') || templateName.includes('リモート')) {
-        document.getElementById('work_style').value = 'remote';
-      }
-      
-      if (template.work_content) {
-        const current = document.getElementById('work_content').value;
-        document.getElementById('work_content').value = current ? current + '\n' + template.work_content : template.work_content;
-      }
-      if (template.achievements) {
-        const current = document.getElementById('achievements').value;
-        document.getElementById('achievements').value = current ? current + '\n' + template.achievements : template.achievements;
-      }
-      if (template.issues) {
-        const current = document.getElementById('issues').value;
-        document.getElementById('issues').value = current ? current + '\n' + template.issues : template.issues;
-      }
-      if (template.consultation) {
-        const current = document.getElementById('consultation').value;
-        document.getElementById('consultation').value = current ? current + '\n' + template.consultation : template.consultation;
-      }
-      alert(`テンプレート「${template.name}」を適用しました`);
-    }
-
-    // ============================================
-    // お気に入り顧客機能
-    // ============================================
-    async function showFavorites() {
-      try {
-        const res = await fetch('/api/favorites');
-        const favorites = await res.json();
-
-        if (favorites.length === 0) {
-          alert('お気に入り顧客がありません。\n訪問先選択画面で⭐ボタンをクリックして登録できます。');
-          return;
-        }
-
-        // モーダル作成
-        let modalHtml = `
-          <div id="favorites-modal" class="modal">
-            <div class="modal-content">
-              <div class="modal-header">
-                <h3>⭐ お気に入りから追加</h3>
-                <button type="button" class="modal-close" onclick="closeFavoritesModal()">&times;</button>
-              </div>
-              <div class="modal-body">
-                <div class="customer-list">
-                  ${favorites.map(f => {
-                    const name = f.target_type === 'supplier' ? f.supplier_name : f.customer_name;
-                    const code = f.target_type === 'supplier' ? f.supplier_code : f.customer_code;
-                    const typeLabel = f.target_type === 'supplier' ? '仕入先' : '得意先';
-                    const typeClass = f.target_type === 'supplier' ? 'supplier' : 'customer';
-                    return `
-                      <div class="customer-item" style="display: flex; justify-content: space-between; align-items: center;">
-                        <div onclick="addFromFavorite('${f.target_type}', ${f.customer_id || 'null'}, ${f.supplier_id || 'null'}, '${escapeHtml(name)}')" style="flex: 1; cursor: pointer;">
-                          <div class="customer-item-name">
-                            <span class="visit-type-badge ${typeClass}" style="font-size: 0.65rem; margin-right: 0.5rem;">${typeLabel}</span>
-                            ${escapeHtml(name)}
-                          </div>
-                          <div class="customer-item-code">${code || ''}</div>
-                        </div>
-                        <button type="button" class="btn btn-sm btn-outline" style="padding: 0.25rem 0.5rem; color: var(--danger-color);" 
-                          onclick="event.stopPropagation(); removeFavorite(${f.id})" title="削除">×</button>
-                      </div>
-                    `;
-                  }).join('')}
-                </div>
-              </div>
-            </div>
-          </div>
-        `;
-        
-        // 既存モーダルを削除
-        const existingModal = document.getElementById('favorites-modal');
-        if (existingModal) existingModal.remove();
-        
-        document.body.insertAdjacentHTML('beforeend', modalHtml);
-      } catch (error) {
-        console.error('お気に入りエラー:', error);
-        alert('お気に入りの読み込みに失敗しました');
-      }
-    }
-
-    function closeFavoritesModal() {
-      const modal = document.getElementById('favorites-modal');
-      if (modal) modal.remove();
-    }
-
-    function addFromFavorite(targetType, customerId, supplierId, name) {
-      addVisit({
-        visit_type: targetType,
-        customer_id: targetType === 'customer' ? customerId : null,
-        supplier_id: targetType === 'supplier' ? supplierId : null,
-        customer_name: name
-      });
-      closeFavoritesModal();
-    }
-
-    async function removeFavorite(favId) {
-      if (!confirm('このお気に入りを削除しますか？')) return;
-      
-      try {
-        await fetch(`/api/favorites/${favId}`, { method: 'DELETE' });
-        showFavorites(); // 再読み込み
-      } catch (e) {
-        alert('削除に失敗しました');
-      }
-    }
-
     // URLパラメータ対応
+    // ============================================
     async function handleUrlParams() {
       const params = new URLSearchParams(window.location.search);
       
@@ -1421,21 +1149,6 @@
         // 外出・訪問モード
         document.getElementById('work_style').value = 'outside';
         // 訪問入力欄は自動追加しない（AIで生成時に追加されるため）
-      }
-
-      // テンプレート指定
-      const templateId = params.get('template');
-      if (templateId) {
-        try {
-          const res = await fetch('/api/templates');
-          const templates = await res.json();
-          const template = templates.find(t => t.id === parseInt(templateId));
-          if (template) {
-            applyTemplate(template);
-          }
-        } catch (error) {
-          console.error('テンプレート適用エラー:', error);
-        }
       }
     }
 
