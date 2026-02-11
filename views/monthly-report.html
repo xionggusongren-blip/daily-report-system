@@ -102,6 +102,7 @@
         <a href="/team-reports.html" class="nav-link">チーム日報</a>
       </nav>
       <div class="user-info">
+        <a href="/docs/manual.html" target="_blank" class="help-link" title="操作マニュアル">?</a>
         <span class="user-name" id="user-name">-</span>
         <button class="btn btn-outline btn-sm btn-logout" onclick="logout()">ログアウト</button>
       </div>
@@ -322,7 +323,6 @@
         params += `&customer_id=${customerId}`;
       } else if (scope === 'supplier' && supplierId) {
         params += `&supplier_id=${supplierId}`;
-      }
       }
 
       try {

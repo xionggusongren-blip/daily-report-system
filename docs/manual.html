@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>営業日報システム - 操作マニュアル</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', 'Hiragino Sans', 'Meiryo', sans-serif;
+      line-height: 1.8;
+      color: #1e293b;
+      background: #f8fafc;
+      padding: 2rem;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    h1 {
+      color: #1e40af;
+      border-bottom: 3px solid #3b82f6;
+      padding-bottom: 0.5rem;
+      margin-bottom: 2rem;
+    }
+    h2 {
+      color: #1e40af;
+      margin-top: 2.5rem;
+      margin-bottom: 1rem;
+      padding: 0.5rem 1rem;
+      background: #dbeafe;
+      border-radius: 0.5rem;
+    }
+    h3 {
+      color: #475569;
+      margin-top: 1.5rem;
+      margin-bottom: 0.75rem;
+      border-left: 4px solid #3b82f6;
+      padding-left: 0.75rem;
+    }
+    p { margin-bottom: 1rem; }
+    .section {
+      background: white;
+      border-radius: 0.75rem;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .step {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      align-items: flex-start;
+    }
+    .step-num {
+      background: #3b82f6;
+      color: white;
+      width: 2rem;
+      height: 2rem;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      flex-shrink: 0;
+    }
+    .step-content { flex: 1; }
+    .tip {
+      background: #fef3c7;
+      border-left: 4px solid #f59e0b;
+      padding: 1rem;
+      margin: 1rem 0;
+      border-radius: 0 0.5rem 0.5rem 0;
+    }
+    .tip-title {
+      font-weight: bold;
+      color: #92400e;
+      margin-bottom: 0.5rem;
+    }
+    .important {
+      background: #fee2e2;
+      border-left: 4px solid #ef4444;
+      padding: 1rem;
+      margin: 1rem 0;
+      border-radius: 0 0.5rem 0.5rem 0;
+    }
+    .important-title {
+      font-weight: bold;
+      color: #991b1b;
+      margin-bottom: 0.5rem;
+    }
+    .toc {
+      background: #f1f5f9;
+      padding: 1.5rem;
+      border-radius: 0.75rem;
+      margin-bottom: 2rem;
+    }
+    .toc-title {
+      font-weight: bold;
+      margin-bottom: 1rem;
+      color: #1e40af;
+    }
+    .toc ul {
+      list-style: none;
+      padding-left: 0;
+    }
+    .toc li {
+      margin-bottom: 0.5rem;
+    }
+    .toc a {
+      color: #3b82f6;
+      text-decoration: none;
+    }
+    .toc a:hover {
+      text-decoration: underline;
+    }
+    .kbd {
+      background: #e2e8f0;
+      padding: 0.2rem 0.5rem;
+      border-radius: 0.25rem;
+      font-family: monospace;
+      font-size: 0.9em;
+    }
+    ul, ol {
+      margin-left: 1.5rem;
+      margin-bottom: 1rem;
+    }
+    li { margin-bottom: 0.5rem; }
+    .screenshot-placeholder {
+      background: #e2e8f0;
+      border: 2px dashed #94a3b8;
+      border-radius: 0.5rem;
+      padding: 2rem;
+      text-align: center;
+      color: #64748b;
+      margin: 1rem 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+    }
+    th, td {
+      border: 1px solid #e2e8f0;
+      padding: 0.75rem;
+      text-align: left;
+    }
+    th {
+      background: #f1f5f9;
+      font-weight: 600;
+    }
+    @media print {
+      body { background: white; }
+      .section { box-shadow: none; border: 1px solid #e2e8f0; }
+    }
+  </style>
+</head>
+<body>
+
+<h1>営業日報システム 操作マニュアル</h1>
+
+<div class="toc">
+  <div class="toc-title">目次</div>
+  <ul>
+    <li><a href="#login">1. ログイン</a></li>
+    <li><a href="#dashboard">2. ダッシュボード（ホーム画面）</a></li>
+    <li><a href="#create-report">3. 日報を作成する</a></li>
+    <li><a href="#ai-generate">4. AIで訪問記録を作成する</a></li>
+    <li><a href="#visit-record">5. 訪問記録の入力</a></li>
+    <li><a href="#report-list">6. 日報一覧・編集</a></li>
+    <li><a href="#calendar">7. カレンダー</a></li>
+    <li><a href="#manager">8. 上長向け機能</a></li>
+    <li><a href="#faq">9. よくある質問</a></li>
+  </ul>
+</div>
+
+<!-- ログイン -->
+<h2 id="login">1. ログイン</h2>
+<div class="section">
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-content">
+      ブラウザで日報システムのURLにアクセスします。<br>
+      <span class="kbd">http://[サーバーのアドレス]:3000</span>
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-content">
+      ログインIDとパスワードを入力し、「ログイン」ボタンをクリックします。
+    </div>
+  </div>
+
+  <div class="tip">
+    <div class="tip-title">ヒント</div>
+    ログイン情報が分からない場合は、管理者にお問い合わせください。
+  </div>
+</div>
+
+<!-- ダッシュボード -->
+<h2 id="dashboard">2. ダッシュボード（ホーム画面）</h2>
+<div class="section">
+  <p>ログイン後に表示されるメイン画面です。以下の情報が確認できます：</p>
+
+  <h3>画面構成</h3>
+  <table>
+    <tr>
+      <th>エリア</th>
+      <th>内容</th>
+    </tr>
+    <tr>
+      <td>上部ナビゲーション</td>
+      <td>ホーム、日報一覧、カレンダーへのリンク</td>
+    </tr>
+    <tr>
+      <td>日報作成ボタン</td>
+      <td>「🚗 外出・訪問」「🏢 内勤」から選んで日報作成を開始</td>
+    </tr>
+    <tr>
+      <td>今月のランキング</td>
+      <td>日報提出数、同行訪問数、訪問先数のTOP3</td>
+    </tr>
+    <tr>
+      <td>最近の日報</td>
+      <td>直近の日報一覧と状態（下書き/提出済み/確認済み）</td>
+    </tr>
+  </table>
+</div>
+
+<!-- 日報作成 -->
+<h2 id="create-report">3. 日報を作成する</h2>
+<div class="section">
+  <h3>基本的な流れ</h3>
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-content">
+      ダッシュボードで <strong>「🚗 外出・訪問」</strong> または <strong>「🏢 内勤」</strong> をクリック
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-content">
+      訪問先がある場合は、訪問記録を追加（後述）
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-content">
+      必要に応じて「業務内容」「成果・気づき」などを入力
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">4</div>
+    <div class="step-content">
+      <strong>「提出する」</strong> ボタンをクリックして完了
+    </div>
+  </div>
+
+  <div class="tip">
+    <div class="tip-title">便利機能</div>
+    <ul>
+      <li><strong>前日コピー</strong>：前日の日報をコピーして編集できます</li>
+      <li><strong>テンプレート</strong>：よく使う形式を保存しておけます</li>
+      <li><strong>下書き保存</strong>：途中で保存して後から続きを書けます</li>
+    </ul>
+  </div>
+</div>
+
+<!-- AI生成 -->
+<h2 id="ai-generate">4. AIで訪問記録を作成する</h2>
+<div class="section">
+  <p>メモを入力するだけで、AIが訪問記録を自動生成します。</p>
+
+  <h3>使い方</h3>
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-content">
+      日報作成画面で <strong>「✨ AIで作成」</strong> ボタンをクリック
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-content">
+      訪問先ごとに1行ずつメモを入力
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-content">
+      <strong>「✨ 抽出する」</strong> をクリック
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">4</div>
+    <div class="step-content">
+      生成された訪問記録を確認し、必要に応じて編集
+    </div>
+  </div>
+
+  <h3>入力フォーマット</h3>
+  <table>
+    <tr>
+      <th>項目</th>
+      <th>書き方</th>
+      <th>例</th>
+    </tr>
+    <tr>
+      <td>会社名</td>
+      <td>行の先頭に記載（後ろにスペース）</td>
+      <td>滝沢電機　</td>
+    </tr>
+    <tr>
+      <td>同行者</td>
+      <td>「○○と同行」「○○部長と」</td>
+      <td>山田部長と同行</td>
+    </tr>
+    <tr>
+      <td>商談内容</td>
+      <td>自由に記載</td>
+      <td>新規ヒアリング、見積依頼</td>
+    </tr>
+  </table>
+
+  <h3>入力例</h3>
+  <div style="background: #f1f5f9; padding: 1rem; border-radius: 0.5rem; font-family: monospace; white-space: pre-line;">
+滝沢電機　山田部長と同行　新規案件ヒアリング、コンデンサ見積依頼
+アジア電気　定期訪問、リピート受注確定
+ABC商事　佐藤課長と　サンプル提出、好感触、次回見積予定</div>
+
+  <div class="important">
+    <div class="important-title">注意</div>
+    AI機能を使用するには、管理者がAI設定を有効にしている必要があります。
+  </div>
+</div>
+
+<!-- 訪問記録 -->
+<h2 id="visit-record">5. 訪問記録の入力</h2>
+<div class="section">
+  <p>手動で訪問記録を追加する方法です。</p>
+
+  <h3>訪問記録の追加</h3>
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-content">
+      日報作成画面で <strong>「+ 訪問先を追加」</strong> をクリック
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-content">
+      訪問先を選択（得意先/仕入先を検索、またはお気に入りから選択）
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-content">
+      訪問内容を入力：
+      <ul>
+        <li>商談内容</li>
+        <li>案件金額・確度（A/B/C/D）</li>
+        <li>同行者</li>
+        <li>関連メーカー</li>
+        <li>次回アクション</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>確度の目安</h3>
+  <table>
+    <tr>
+      <th>確度</th>
+      <th>意味</th>
+    </tr>
+    <tr>
+      <td>A</td>
+      <td>ほぼ確定（90%以上）</td>
+    </tr>
+    <tr>
+      <td>B</td>
+      <td>有望（50〜90%）</td>
+    </tr>
+    <tr>
+      <td>C</td>
+      <td>可能性あり（20〜50%）</td>
+    </tr>
+    <tr>
+      <td>D</td>
+      <td>情報収集段階（20%未満）</td>
+    </tr>
+  </table>
+</div>
+
+<!-- 日報一覧 -->
+<h2 id="report-list">6. 日報一覧・編集</h2>
+<div class="section">
+  <p>過去の日報を確認・編集できます。</p>
+
+  <h3>日報の状態</h3>
+  <table>
+    <tr>
+      <th>状態</th>
+      <th>説明</th>
+      <th>編集</th>
+    </tr>
+    <tr>
+      <td>下書き</td>
+      <td>まだ提出していない</td>
+      <td>可能</td>
+    </tr>
+    <tr>
+      <td>提出済み</td>
+      <td>提出完了、上長確認待ち</td>
+      <td>可能</td>
+    </tr>
+    <tr>
+      <td>確認済み</td>
+      <td>上長が確認完了</td>
+      <td>不可</td>
+    </tr>
+    <tr>
+      <td>差戻し</td>
+      <td>修正が必要</td>
+      <td>可能</td>
+    </tr>
+  </table>
+
+  <div class="tip">
+    <div class="tip-title">ヒント</div>
+    差戻しされた日報には、上長からのコメントが付いている場合があります。コメントを確認して修正しましょう。
+  </div>
+</div>
+
+<!-- カレンダー -->
+<h2 id="calendar">7. カレンダー</h2>
+<div class="section">
+  <p>月別のカレンダー形式で日報を確認できます。</p>
+
+  <h3>機能</h3>
+  <ul>
+    <li><strong>自分の日報</strong>：自分の日報を月別に表示</li>
+    <li><strong>全員</strong>：チーム全員の日報を一覧表示</li>
+    <li><strong>他のメンバー</strong>：特定のメンバーの日報を表示</li>
+  </ul>
+
+  <h3>色の意味</h3>
+  <table>
+    <tr>
+      <th>色</th>
+      <th>意味</th>
+    </tr>
+    <tr>
+      <td style="background: #dcfce7; padding: 0.25rem 0.5rem;">緑</td>
+      <td>確認済み</td>
+    </tr>
+    <tr>
+      <td style="background: #dbeafe; padding: 0.25rem 0.5rem;">青</td>
+      <td>提出済み</td>
+    </tr>
+    <tr>
+      <td style="background: #fef9c3; padding: 0.25rem 0.5rem;">黄</td>
+      <td>下書き</td>
+    </tr>
+    <tr>
+      <td style="background: #fecaca; padding: 0.25rem 0.5rem;">赤</td>
+      <td>差戻し</td>
+    </tr>
+  </table>
+</div>
+
+<!-- 上長向け -->
+<h2 id="manager">8. 上長向け機能</h2>
+<div class="section">
+  <p>上長・管理者には追加メニューが表示されます。</p>
+
+  <h3>チーム日報</h3>
+  <p>部下の日報を一覧で確認し、「確認済み」にしたりコメントを付けたりできます。</p>
+
+  <h3>日報の確認方法</h3>
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-content">
+      「チーム日報」メニューをクリック
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-content">
+      確認したい日報をクリックして詳細を表示
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-content">
+      内容を確認し、「確認済みにする」または「差戻し」を選択
+    </div>
+  </div>
+
+  <h3>管理者メニュー</h3>
+  <p>管理者には以下の設定メニューが表示されます：</p>
+  <ul>
+    <li><strong>ユーザー管理</strong>：ユーザーの追加・編集・削除</li>
+    <li><strong>マスター管理</strong>：得意先・仕入先・メーカーの管理</li>
+    <li><strong>AI設定</strong>：AI機能の有効化・APIキー設定</li>
+    <li><strong>インポート</strong>：CSVからのデータ取り込み</li>
+  </ul>
+</div>
+
+<!-- FAQ -->
+<h2 id="faq">9. よくある質問</h2>
+<div class="section">
+  <h3>Q. 日報を提出し忘れた日があります</h3>
+  <p>日報作成画面で日付を変更して、過去の日付で作成できます。</p>
+
+  <h3>Q. 訪問先が見つかりません</h3>
+  <p>新規の訪問先の場合は「手入力」で会社名を直接入力できます。管理者に得意先マスターへの追加を依頼してください。</p>
+
+  <h3>Q. AIで作成ボタンが表示されません</h3>
+  <p>AI機能が有効になっていない可能性があります。管理者にお問い合わせください。</p>
+
+  <h3>Q. 確認済みの日報を修正したい</h3>
+  <p>確認済みの日報は編集できません。上長に差戻しを依頼してください。</p>
+
+  <h3>Q. パスワードを変更したい</h3>
+  <p>現在、パスワード変更機能は管理者のみが行えます。管理者にお問い合わせください。</p>
+</div>
+
+<div style="text-align: center; margin-top: 3rem; padding: 2rem; color: #64748b; font-size: 0.9rem;">
+  <p>営業日報システム 操作マニュアル</p>
+  <p>ご不明な点は管理者までお問い合わせください。</p>
+</div>
+
+</body>
+</html>
